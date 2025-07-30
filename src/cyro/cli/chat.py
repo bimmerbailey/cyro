@@ -39,35 +39,41 @@ def start(
 
 def start_chat_mode(agent: Optional[str] = None, verbose: bool = False):
     """Start the interactive chat mode."""
+    import os
+    
     # Welcome message for chat mode
     chat_welcome = Panel(
         Text.assemble(
-            ("🤖 ", "blue"),
-            ("Interactive Chat Mode", "bold blue"),
-            ("\n\nYou can now have a continuous conversation with Cyro.\n", "white"),
-            ("Each message will be processed by the AI agent.\n\n", "white"),
-            ("Commands:\n", "bold white"),
-            ("• Type your message and press Enter\n", "white"),
-            ("• ", "white"),
-            ("/exit", "bold cyan"),
-            (" or ", "white"),
-            ("/quit", "bold cyan"),
-            (" - Exit chat mode\n", "white"),
-            ("• ", "white"),
-            ("/clear", "bold cyan"),
-            (" - Clear conversation history\n", "white"),
-            ("• ", "white"),
-            ("/help", "bold cyan"),
-            (" - Show chat help\n", "white"),
-            ("• ", "white"),
-            ("/agent <name>", "bold cyan"),
-            (" - Switch to specific agent\n", "white"),
+            ("🤖 ", "bright_green"),
+            ("Welcome to Cyro!", "bold bright_white"),
+            ("\n\n", "white"),
+            ("/help", "dim white"),
+            (" for help, ", "dim white"),
+            ("/status", "dim white"),
+            (" for your current setup\n\n", "dim white"),
+            ("cwd: ", "dim white"),
+            (os.getcwd(), "dim white"),
         ),
-        title=f"[bold blue]Chat Mode{f' - {agent}' if agent else ''}[/bold blue]",
-        border_style="blue",
-        padding=(1, 2),
+        border_style="bright_white",
+        padding=(0, 1),
     )
     console.print(chat_welcome)
+    
+    # Add tip panel
+    tip_panel = Panel(
+        Text.assemble(
+            ("💡 ", "bright_yellow"),
+            ("Tip: ", "bold bright_white"),
+            ("Create custom slash commands by adding .md files to ", "white"),
+            (".cyro/commands/", "bright_cyan"),
+            (" in your project or ", "white"),
+            ("~/.cyro/commands/", "bright_cyan"), 
+            (" for commands that work in any project", "white"),
+        ),
+        border_style="bright_white",
+        padding=(0, 1),
+    )
+    console.print(tip_panel)
 
     # Chat session state
     conversation_history = []
