@@ -7,34 +7,10 @@ with AI agents, supporting streaming responses and session management.
 
 from typing import Optional
 
-import typer
 from rich.panel import Panel
 from rich.text import Text
 
 from cyro.utils.console import console, print_info, print_success, print_warning
-
-# Create chat subcommand app
-chat_app = typer.Typer(
-    name="chat",
-    help="Interactive chat commands",
-    rich_markup_mode="rich",
-)
-
-
-@chat_app.command()
-def start(
-    agent: Optional[str] = typer.Option(
-        None, "--agent", "-a", help="Specify which agent to chat with"
-    ),
-    verbose: bool = typer.Option(
-        False, "--verbose", "-v", help="Enable verbose output"
-    ),
-):
-    """Start an interactive chat session."""
-    if verbose:
-        console.print(f"[dim]Starting chat with agent: {agent or 'auto'}[/dim]")
-
-    start_chat_mode(agent, verbose)
 
 
 def start_chat_mode(agent: Optional[str] = None, verbose: bool = False):
@@ -46,15 +22,15 @@ def start_chat_mode(agent: Optional[str] = None, verbose: bool = False):
         Text.assemble(
             ("🤖 ", "bright_green"),
             ("Welcome to Cyro!", "bold bright_white"),
-            ("\n\n", "white"),
-            ("/help", "dim white"),
-            (" for help, ", "dim white"),
-            ("/status", "dim white"),
-            (" for your current setup\n\n", "dim white"),
-            ("cwd: ", "dim white"),
-            (os.getcwd(), "dim white"),
+            ("\n\n", "bright_white"),
+            ("/help", "yellow"),
+            (" for help, ", "bright_white"),
+            ("/status", "yellow"),
+            (" for your current setup\n\n", "bright_white"),
+            ("cwd: ", "bright_white"),
+            (os.getcwd(), "yellow"),
         ),
-        border_style="bright_white",
+        border_style="yellow",
         padding=(0, 1),
     )
     console.print(chat_welcome)
@@ -64,13 +40,13 @@ def start_chat_mode(agent: Optional[str] = None, verbose: bool = False):
         Text.assemble(
             ("💡 ", "bright_yellow"),
             ("Tip: ", "bold bright_white"),
-            ("Create custom slash commands by adding .md files to ", "white"),
-            (".cyro/commands/", "bright_cyan"),
-            (" in your project or ", "white"),
-            ("~/.cyro/commands/", "bright_cyan"), 
-            (" for commands that work in any project", "white"),
+            ("Create custom slash commands by adding .md files to ", "bright_white"),
+            (".cyro/commands/", "orange"),
+            (" in your project or ", "bright_white"),
+            ("~/.cyro/commands/", "orange"), 
+            (" for commands that work in any project", "bright_white"),
         ),
-        border_style="bright_white",
+        border_style="yellow",
         padding=(0, 1),
     )
     console.print(tip_panel)
@@ -115,9 +91,9 @@ def start_chat_mode(agent: Optional[str] = None, verbose: bool = False):
 
                 # Show user message
                 user_panel = Panel(
-                    Text(user_input, style="white"),
-                    title="[bold green]You[/bold green]",
-                    border_style="green",
+                    Text(user_input, style="bright_white"),
+                    title="[bold bright_green]You[/bold bright_green]",
+                    border_style="bright_green",
                 )
                 console.print(user_panel)
 
@@ -140,6 +116,149 @@ def start_chat_mode(agent: Optional[str] = None, verbose: bool = False):
             except KeyboardInterrupt:
                 console.print("\n[dim]Use /exit or /quit to leave chat mode[/dim]")
                 continue
+
+    except (EOFError, KeyboardInterrupt):
+        console.print("\n[dim]Exiting chat mode...[/dim]")
+
+    print_success("Chat session ended.")
+
+
+def start_chat_mode_with_query(initial_query: str, agent: Optional[str] = None, verbose: bool = False):
+    """Start chat mode with an initial query."""
+    import os
+    
+    # Welcome message for chat mode
+    chat_welcome = Panel(
+        Text.assemble(
+            ("🤖 ", "bright_green"),
+            ("Welcome to Cyro!", "bold bright_white"),
+            ("\n\n", "bright_white"),
+            ("/help", "yellow"),
+            (" for help, ", "bright_white"),
+            ("/status", "yellow"),
+            (" for your current setup\n\n", "bright_white"),
+            ("cwd: ", "bright_white"),
+            (os.getcwd(), "yellow"),
+        ),
+        border_style="yellow",
+        padding=(0, 1),
+    )
+    console.print(chat_welcome)
+    
+    # Add tip panel
+    tip_panel = Panel(
+        Text.assemble(
+            ("💡 ", "bright_yellow"),
+            ("Tip: ", "bold bright_white"),
+            ("Create custom slash commands by adding .md files to ", "bright_white"),
+            (".cyro/commands/", "orange"),
+            (" in your project or ", "bright_white"),
+            ("~/.cyro/commands/", "orange"), 
+            (" for commands that work in any project", "bright_white"),
+        ),
+        border_style="yellow",
+        padding=(0, 1),
+    )
+    console.print(tip_panel)
+
+    # Chat session state
+    conversation_history = []
+    current_agent = agent
+
+    # Process the initial query
+    try:
+        # Add initial query to history
+        conversation_history.append({"role": "user", "content": initial_query})
+
+        # Show initial query
+        user_panel = Panel(
+            Text(initial_query, style="bright_white"),
+            title="[bold bright_green]You[/bold bright_green]",
+            border_style="bright_green",
+        )
+        console.print(user_panel)
+
+        # Process initial message with AI agent
+        response = process_chat_message(
+            initial_query, conversation_history, current_agent, verbose
+        )
+
+        # Add AI response to history
+        conversation_history.append({"role": "assistant", "content": response})
+
+        # Show AI response
+        ai_panel = Panel(
+            Text(response, style="bright_white"),
+            title=f"[bold yellow]Cyro{f' ({current_agent})' if current_agent else ''}[/bold yellow]",
+            border_style="yellow",
+        )
+        console.print(ai_panel)
+        
+        # Continue with normal chat loop
+        try:
+            while True:
+                try:
+                    # Get user input with agent indicator
+                    agent_indicator = f"[{current_agent}]" if current_agent else "[auto]"
+                    user_input = console.input(
+                        f"\n[bold blue]you{agent_indicator}>[/bold blue] "
+                    ).strip()
+
+                    if not user_input:
+                        continue
+
+                    # Handle chat commands
+                    if user_input.startswith("/"):
+                        command_result = handle_chat_command(
+                            user_input, conversation_history, current_agent, verbose
+                        )
+
+                        if command_result == "exit":
+                            break
+                        elif command_result == "clear":
+                            conversation_history.clear()
+                            print_success("Conversation history cleared.")
+                            continue
+                        elif command_result.startswith("agent:"):
+                            current_agent = command_result.split(":", 1)[1]
+                            print_info(f"Switched to agent: {current_agent or 'auto'}")
+                            continue
+                        else:
+                            continue
+
+                    # Add user message to history
+                    conversation_history.append({"role": "user", "content": user_input})
+
+                    # Show user message
+                    user_panel = Panel(
+                        Text(user_input, style="white"),
+                        title="[bold green]You[/bold green]",
+                        border_style="green",
+                    )
+                    console.print(user_panel)
+
+                    # Process message with AI agent
+                    response = process_chat_message(
+                        user_input, conversation_history, current_agent, verbose
+                    )
+
+                    # Add AI response to history
+                    conversation_history.append({"role": "assistant", "content": response})
+
+                    # Show AI response
+                    ai_panel = Panel(
+                        Text(response, style="bright_white"),
+                        title=f"[bold yellow]Cyro{f' ({current_agent})' if current_agent else ''}[/bold yellow]",
+                        border_style="yellow",
+                    )
+                    console.print(ai_panel)
+
+                except KeyboardInterrupt:
+                    console.print("\n[dim]Use /exit or /quit to leave chat mode[/dim]")
+                    continue
+
+        except (EOFError, KeyboardInterrupt):
+            console.print("\n[dim]Exiting chat mode...[/dim]")
 
     except (EOFError, KeyboardInterrupt):
         console.print("\n[dim]Exiting chat mode...[/dim]")
@@ -192,34 +311,34 @@ def handle_chat_command(
 def show_chat_help():
     """Show available chat commands."""
     help_text = Text.assemble(
-        ("Chat Commands:\n\n", "bold white"),
-        ("• ", "white"),
-        ("/exit, /quit, /q", "bold cyan"),
-        (" - Exit chat mode\n", "white"),
-        ("• ", "white"),
-        ("/clear", "bold cyan"),
-        (" - Clear conversation history\n", "white"),
-        ("• ", "white"),
-        ("/help", "bold cyan"),
-        (" - Show this help\n", "white"),
-        ("• ", "white"),
-        ("/agent <name>", "bold cyan"),
-        (" - Switch to specific agent\n", "white"),
-        ("• ", "white"),
-        ("/agent auto", "bold cyan"),
-        (" - Use automatic agent selection\n", "white"),
-        ("• ", "white"),
-        ("/history", "bold cyan"),
-        (" - Show conversation history\n", "white"),
-        ("• ", "white"),
-        ("/status", "bold cyan"),
-        (" - Show chat session status\n", "white"),
+        ("Chat Commands:\n\n", "bold bright_white"),
+        ("• ", "bright_white"),
+        ("/exit, /quit, /q", "bold orange"),
+        (" - Exit chat mode\n", "bright_white"),
+        ("• ", "bright_white"),
+        ("/clear", "bold orange"),
+        (" - Clear conversation history\n", "bright_white"),
+        ("• ", "bright_white"),
+        ("/help", "bold orange"),
+        (" - Show this help\n", "bright_white"),
+        ("• ", "bright_white"),
+        ("/agent <name>", "bold orange"),
+        (" - Switch to specific agent\n", "bright_white"),
+        ("• ", "bright_white"),
+        ("/agent auto", "bold orange"),
+        (" - Use automatic agent selection\n", "bright_white"),
+        ("• ", "bright_white"),
+        ("/history", "bold orange"),
+        (" - Show conversation history\n", "bright_white"),
+        ("• ", "bright_white"),
+        ("/status", "bold orange"),
+        (" - Show chat session status\n", "bright_white"),
     )
 
     panel = Panel(
         help_text,
-        title="[bold blue]Chat Help[/bold blue]",
-        border_style="blue",
+        title="[bold yellow]Chat Help[/bold yellow]",
+        border_style="yellow",
         padding=(1, 2),
     )
     console.print(panel)
@@ -234,16 +353,16 @@ def show_conversation_history(history: list):
     history_text = Text()
     for i, message in enumerate(history, 1):
         role = "You" if message["role"] == "user" else "Cyro"
-        role_style = "green" if message["role"] == "user" else "blue"
+        role_style = "bright_green" if message["role"] == "user" else "yellow"
 
-        history_text.append(f"{i}. ", style="dim")
+        history_text.append(f"{i}. ", style="yellow")
         history_text.append(f"{role}: ", style=f"bold {role_style}")
-        history_text.append(f"{message['content']}\n\n", style="white")
+        history_text.append(f"{message['content']}\n\n", style="bright_white")
 
     panel = Panel(
         history_text,
-        title="[bold blue]Conversation History[/bold blue]",
-        border_style="blue",
+        title="[bold yellow]Conversation History[/bold yellow]",
+        border_style="yellow",
     )
     console.print(panel)
 
@@ -251,18 +370,18 @@ def show_conversation_history(history: list):
 def show_chat_status(agent: Optional[str], message_count: int):
     """Show current chat session status."""
     status_text = Text.assemble(
-        ("Current Agent: ", "white"),
-        (agent or "auto", "bold blue"),
-        ("\nMessages in History: ", "white"),
-        (str(message_count), "bold green"),
-        ("\nSession Status: ", "white"),
-        ("Active", "bold green"),
+        ("Current Agent: ", "bright_white"),
+        (agent or "auto", "bold yellow"),
+        ("\nMessages in History: ", "bright_white"),
+        (str(message_count), "bold bright_green"),
+        ("\nSession Status: ", "bright_white"),
+        ("Active", "bold bright_green"),
     )
 
     panel = Panel(
         status_text,
-        title="[bold blue]Chat Status[/bold blue]",
-        border_style="blue",
+        title="[bold yellow]Chat Status[/bold yellow]",
+        border_style="yellow",
     )
     console.print(panel)
 
@@ -278,17 +397,3 @@ def process_chat_message(
     return f"🚧 AI processing not yet implemented.\n\nReceived: '{message}'"
 
 
-# Default command when just running 'cyro chat'
-@chat_app.callback(invoke_without_command=True)
-def chat_main(
-    ctx: typer.Context,
-    agent: Optional[str] = typer.Option(
-        None, "--agent", "-a", help="Specify which agent to chat with"
-    ),
-    verbose: bool = typer.Option(
-        False, "--verbose", "-v", help="Enable verbose output"
-    ),
-):
-    """Start interactive chat mode."""
-    if ctx.invoked_subcommand is None:
-        start_chat_mode(agent, verbose)
