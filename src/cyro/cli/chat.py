@@ -215,6 +215,17 @@ def handle_chat_command(
         show_chat_status(current_agent, len(history))
         return "status"
 
+    elif cmd == "config":
+        if len(cmd_parts) > 1 and cmd_parts[1] == "theme":
+            if len(cmd_parts) > 2:
+                handle_chat_theme_config(cmd_parts[2])
+            else:
+                handle_chat_theme_config("list")
+            return "config"
+        else:
+            print_warning("Usage: /config theme [list|current|<theme_name>]")
+            return "error"
+
     else:
         print_warning(f"Unknown command: /{cmd}. Type /help for available commands.")
         return "unknown"
@@ -245,6 +256,9 @@ def show_chat_help():
         ("• ", get_theme_color("text")),
         ("/status", f"bold {get_theme_color('secondary')}"),
         (" - Show chat session status\n", get_theme_color("text")),
+        ("• ", get_theme_color("text")),
+        ("/config theme", f"bold {get_theme_color('secondary')}"),
+        (" - Manage themes (list, current, <name>)\n", get_theme_color("text")),
     )
 
     panel = Panel(
@@ -296,6 +310,66 @@ def show_chat_status(agent: Optional[str], message_count: int):
         border_style=get_theme_color("border"),
     )
     console.print(panel)
+
+
+def handle_chat_theme_config(action: str):
+    """Handle theme configuration commands in chat mode."""
+    from cyro.config.themes import list_themes, get_current_theme_name, set_theme, get_theme_info, load_custom_themes
+    from cyro.utils.console import print_info, print_success, print_error
+    
+    if action == "list":
+        # Load custom themes first
+        themes_dir = "~/.cyro/themes"
+        custom_count = load_custom_themes(themes_dir)
+        
+        all_themes = list_themes()
+        current_theme = get_current_theme_name()
+        
+        # Simple list format for chat
+        themes_text = Text()
+        themes_text.append("Available themes:\n\n", style=get_theme_color("text"))
+        
+        for theme_name in all_themes:
+            is_current = " (current)" if theme_name == current_theme else ""
+            themes_text.append(f"• {theme_name}{is_current}\n", 
+                             style=get_theme_color("success") if is_current else get_theme_color("text"))
+        
+        if custom_count > 0:
+            themes_text.append(f"\n{custom_count} custom theme{'s' if custom_count != 1 else ''} loaded from {themes_dir}", 
+                             style=get_theme_color("text_dim"))
+        
+        panel = Panel(
+            themes_text,
+            title=f"[bold {get_theme_color('primary')}]Themes[/bold {get_theme_color('primary')}]",
+            border_style=get_theme_color("border"),
+        )
+        console.print(panel)
+        
+    elif action == "current":
+        current = get_current_theme_name()
+        theme_info = get_theme_info(current)
+        
+        if theme_info:
+            console.print(f"Current theme: [{get_theme_color('primary')}]{theme_info['name']}[/{get_theme_color('primary')}]")
+            console.print(f"[{get_theme_color('text_dim')}]{theme_info['description']}[/{get_theme_color('text_dim')}]")
+        else:
+            console.print(f"Current theme: [{get_theme_color('primary')}]{current}[/{get_theme_color('primary')}]")
+    else:
+        # Try to switch to the specified theme
+        themes_dir = "~/.cyro/themes"
+        custom_count = load_custom_themes(themes_dir)
+        
+        if set_theme(action):
+            theme_info = get_theme_info(action)
+            if theme_info:
+                print_success(f"Switched to '{theme_info['name']}' theme")
+                console.print(f"[{get_theme_color('text_dim')}]{theme_info['description']}[/{get_theme_color('text_dim')}]")
+            else:
+                print_success(f"Switched to '{action}' theme")
+        else:
+            available_themes = list_themes()
+            print_error(f"Theme '{action}' not found")
+            console.print(f"Available: [{get_theme_color('info')}]{', '.join(available_themes)}[/{get_theme_color('info')}]")
 
 
 def process_chat_message(
