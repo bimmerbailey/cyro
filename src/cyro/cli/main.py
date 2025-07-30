@@ -9,12 +9,12 @@ import os
 from typing import Optional
 
 import typer
-from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
 from cyro import __version__
 from cyro.cli.chat import start_chat_mode, start_chat_mode_with_query
+from cyro.utils.console import console
 
 # Create the main Typer application
 app = typer.Typer(
@@ -23,9 +23,6 @@ app = typer.Typer(
     rich_markup_mode="rich",
     no_args_is_help=False,  # Allow running without args for interactive mode
 )
-
-# Initialize Rich console
-console = Console()
 
 
 def version_callback(value: bool):
