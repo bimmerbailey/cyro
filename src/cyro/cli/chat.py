@@ -11,6 +11,7 @@ from typing import Optional
 from rich.panel import Panel
 from rich.text import Text
 
+from cyro.config.themes import get_theme_color
 from cyro.utils.console import console, print_info, print_success, print_warning
 
 
@@ -19,17 +20,17 @@ def _show_welcome_panels():
     # Welcome message for chat mode
     chat_welcome = Panel(
         Text.assemble(
-            ("🤖 ", "bright_green"),
-            ("Welcome to Cyro!", "bold bright_white"),
-            ("\n\n", "bright_white"),
-            ("/help", "yellow"),
-            (" for help, ", "bright_white"),
-            ("/status", "yellow"),
-            (" for your current setup\n\n", "bright_white"),
-            ("cwd: ", "bright_white"),
-            (os.getcwd(), "yellow"),
+            ("🤖 ", get_theme_color("success")),
+            ("Welcome to Cyro!", f"bold {get_theme_color('text')}"),
+            ("\n\n", get_theme_color("text")),
+            ("/help", get_theme_color("info")),
+            (" for help, ", get_theme_color("text")),
+            ("/status", get_theme_color("info")),
+            (" for your current setup\n\n", get_theme_color("text")),
+            ("cwd: ", get_theme_color("text")),
+            (os.getcwd(), get_theme_color("info")),
         ),
-        border_style="yellow",
+        border_style=get_theme_color("border"),
         padding=(0, 1),
     )
     console.print(chat_welcome)
@@ -37,15 +38,15 @@ def _show_welcome_panels():
     # Add tip panel
     tip_panel = Panel(
         Text.assemble(
-            ("💡 ", "bright_yellow"),
-            ("Tip: ", "bold bright_white"),
-            ("Create custom slash commands by adding .md files to ", "bright_white"),
-            (".cyro/commands/", "orange"),
-            (" in your project or ", "bright_white"),
-            ("~/.cyro/commands/", "orange"), 
-            (" for commands that work in any project", "bright_white"),
+            ("💡 ", get_theme_color("warning")),
+            ("Tip: ", f"bold {get_theme_color('text')}"),
+            ("Create custom slash commands by adding .md files to ", get_theme_color("text")),
+            (".cyro/commands/", get_theme_color("secondary")),
+            (" in your project or ", get_theme_color("text")),
+            ("~/.cyro/commands/", get_theme_color("secondary")), 
+            (" for commands that work in any project", get_theme_color("text")),
         ),
-        border_style="yellow",
+        border_style=get_theme_color("border"),
         padding=(0, 1),
     )
     console.print(tip_panel)
@@ -54,9 +55,9 @@ def _show_welcome_panels():
 def _create_user_panel(content: str) -> Panel:
     """Create a standardized user message panel."""
     return Panel(
-        Text(content, style="bright_white"),
-        title="[bold bright_green]You[/bold bright_green]",
-        border_style="bright_green",
+        Text(content, style=get_theme_color("text")),
+        title=f"[bold {get_theme_color('success')}]You[/bold {get_theme_color('success')}]",
+        border_style=get_theme_color("success"),
     )
 
 
@@ -64,9 +65,9 @@ def _create_ai_panel(content: str, agent: Optional[str] = None) -> Panel:
     """Create a standardized AI response panel."""
     agent_suffix = f" ({agent})" if agent else ""
     return Panel(
-        Text(content, style="white"),
-        title=f"[bold blue]Cyro{agent_suffix}[/bold blue]",
-        border_style="blue",
+        Text(content, style=get_theme_color("text")),
+        title=f"[bold {get_theme_color('primary')}]Cyro{agent_suffix}[/bold {get_theme_color('primary')}]",
+        border_style=get_theme_color("primary"),
     )
 
 
@@ -78,7 +79,7 @@ def _run_chat_loop(conversation_history: list, current_agent: Optional[str], ver
                 # Get user input with agent indicator
                 agent_indicator = f"[{current_agent}]" if current_agent else "[auto]"
                 user_input = console.input(
-                    f"\n[bold blue]you{agent_indicator}>[/bold blue] "
+                    f"\n[bold {get_theme_color('primary')}]you{agent_indicator}>[/bold {get_theme_color('primary')}] "
                 ).strip()
 
                 if not user_input:
@@ -121,11 +122,11 @@ def _run_chat_loop(conversation_history: list, current_agent: Optional[str], ver
                 console.print(_create_ai_panel(response, current_agent))
 
             except KeyboardInterrupt:
-                console.print("\n[dim]Use /exit or /quit to leave chat mode[/dim]")
+                console.print(f"\n[{get_theme_color('text_dim')}]Use /exit or /quit to leave chat mode[/{get_theme_color('text_dim')}]")
                 continue
 
     except (EOFError, KeyboardInterrupt):
-        console.print("\n[dim]Exiting chat mode...[/dim]")
+        console.print(f"\n[{get_theme_color('text_dim')}]Exiting chat mode...[/{get_theme_color('text_dim')}]")
 
 
 def start_chat_mode(agent: Optional[str] = None, verbose: bool = False):
@@ -172,7 +173,7 @@ def start_chat_mode_with_query(initial_query: str, agent: Optional[str] = None, 
         _run_chat_loop(conversation_history, current_agent, verbose)
 
     except (EOFError, KeyboardInterrupt):
-        console.print("\n[dim]Exiting chat mode...[/dim]")
+        console.print(f"\n[{get_theme_color('text_dim')}]Exiting chat mode...[/{get_theme_color('text_dim')}]")
 
     print_success("Chat session ended.")
 
@@ -222,34 +223,34 @@ def handle_chat_command(
 def show_chat_help():
     """Show available chat commands."""
     help_text = Text.assemble(
-        ("Chat Commands:\n\n", "bold bright_white"),
-        ("• ", "bright_white"),
-        ("/exit, /quit, /q", "bold orange"),
-        (" - Exit chat mode\n", "bright_white"),
-        ("• ", "bright_white"),
-        ("/clear", "bold orange"),
-        (" - Clear conversation history\n", "bright_white"),
-        ("• ", "bright_white"),
-        ("/help", "bold orange"),
-        (" - Show this help\n", "bright_white"),
-        ("• ", "bright_white"),
-        ("/agent <name>", "bold orange"),
-        (" - Switch to specific agent\n", "bright_white"),
-        ("• ", "bright_white"),
-        ("/agent auto", "bold orange"),
-        (" - Use automatic agent selection\n", "bright_white"),
-        ("• ", "bright_white"),
-        ("/history", "bold orange"),
-        (" - Show conversation history\n", "bright_white"),
-        ("• ", "bright_white"),
-        ("/status", "bold orange"),
-        (" - Show chat session status\n", "bright_white"),
+        ("Chat Commands:\n\n", f"bold {get_theme_color('text')}"),
+        ("• ", get_theme_color("text")),
+        ("/exit, /quit, /q", f"bold {get_theme_color('secondary')}"),
+        (" - Exit chat mode\n", get_theme_color("text")),
+        ("• ", get_theme_color("text")),
+        ("/clear", f"bold {get_theme_color('secondary')}"),
+        (" - Clear conversation history\n", get_theme_color("text")),
+        ("• ", get_theme_color("text")),
+        ("/help", f"bold {get_theme_color('secondary')}"),
+        (" - Show this help\n", get_theme_color("text")),
+        ("• ", get_theme_color("text")),
+        ("/agent <name>", f"bold {get_theme_color('secondary')}"),
+        (" - Switch to specific agent\n", get_theme_color("text")),
+        ("• ", get_theme_color("text")),
+        ("/agent auto", f"bold {get_theme_color('secondary')}"),
+        (" - Use automatic agent selection\n", get_theme_color("text")),
+        ("• ", get_theme_color("text")),
+        ("/history", f"bold {get_theme_color('secondary')}"),
+        (" - Show conversation history\n", get_theme_color("text")),
+        ("• ", get_theme_color("text")),
+        ("/status", f"bold {get_theme_color('secondary')}"),
+        (" - Show chat session status\n", get_theme_color("text")),
     )
 
     panel = Panel(
         help_text,
-        title="[bold yellow]Chat Help[/bold yellow]",
-        border_style="yellow",
+        title=f"[bold {get_theme_color('primary')}]Chat Help[/bold {get_theme_color('primary')}]",
+        border_style=get_theme_color("border"),
         padding=(1, 2),
     )
     console.print(panel)
@@ -264,16 +265,16 @@ def show_conversation_history(history: list):
     history_text = Text()
     for i, message in enumerate(history, 1):
         role = "You" if message["role"] == "user" else "Cyro"
-        role_style = "bright_green" if message["role"] == "user" else "yellow"
+        role_style = get_theme_color("success") if message["role"] == "user" else get_theme_color("primary")
 
-        history_text.append(f"{i}. ", style="yellow")
+        history_text.append(f"{i}. ", style=get_theme_color("info"))
         history_text.append(f"{role}: ", style=f"bold {role_style}")
-        history_text.append(f"{message['content']}\n\n", style="bright_white")
+        history_text.append(f"{message['content']}\n\n", style=get_theme_color("text"))
 
     panel = Panel(
         history_text,
-        title="[bold yellow]Conversation History[/bold yellow]",
-        border_style="yellow",
+        title=f"[bold {get_theme_color('primary')}]Conversation History[/bold {get_theme_color('primary')}]",
+        border_style=get_theme_color("border"),
     )
     console.print(panel)
 
@@ -281,18 +282,18 @@ def show_conversation_history(history: list):
 def show_chat_status(agent: Optional[str], message_count: int):
     """Show current chat session status."""
     status_text = Text.assemble(
-        ("Current Agent: ", "bright_white"),
-        (agent or "auto", "bold yellow"),
-        ("\nMessages in History: ", "bright_white"),
-        (str(message_count), "bold bright_green"),
-        ("\nSession Status: ", "bright_white"),
-        ("Active", "bold bright_green"),
+        ("Current Agent: ", get_theme_color("text")),
+        (agent or "auto", f"bold {get_theme_color('info')}"),
+        ("\nMessages in History: ", get_theme_color("text")),
+        (str(message_count), f"bold {get_theme_color('success')}"),
+        ("\nSession Status: ", get_theme_color("text")),
+        ("Active", f"bold {get_theme_color('success')}"),
     )
 
     panel = Panel(
         status_text,
-        title="[bold yellow]Chat Status[/bold yellow]",
-        border_style="yellow",
+        title=f"[bold {get_theme_color('primary')}]Chat Status[/bold {get_theme_color('primary')}]",
+        border_style=get_theme_color("border"),
     )
     console.print(panel)
 
@@ -302,7 +303,7 @@ def process_chat_message(
 ) -> str:
     """Process a chat message through the AI agent."""
     if verbose:
-        console.print(f"[dim]Processing message with agent: {agent or 'auto'}[/dim]")
+        console.print(f"[{get_theme_color('text_dim')}]Processing message with agent: {agent or 'auto'}[/{get_theme_color('text_dim')}]")
 
     # TODO: Implement actual AI agent processing
     return f"🚧 AI processing not yet implemented.\n\nReceived: '{message}'"

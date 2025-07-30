@@ -24,7 +24,7 @@ class ProviderConfig(BaseModel):
 class AgentConfig(BaseModel):
     """Configuration for agent system."""
 
-    discovery_path: str = "~/.config/cyro/agents"
+    discovery_path: str = "~/.cyro/agents"
     auto_load: bool = True
     default_tools: List[str] = ["filesystem", "web"]
 
@@ -58,7 +58,7 @@ class CyroConfig(BaseModel):
     security: SecurityConfig = SecurityConfig()
 
     # UI settings
-    theme: str = "auto"
+    theme: str = "cyro"
     show_progress: bool = True
     streaming: bool = True
     panel_style: str = "rounded"
