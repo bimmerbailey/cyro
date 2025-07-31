@@ -11,67 +11,102 @@ from typing import Optional
 from rich.panel import Panel
 from rich.text import Text
 
-from cyro.config.themes import get_theme_color
-from cyro.utils.console import console, print_info, print_success, print_warning
+from cyro.config.themes import (
+    get_theme_color,
+    list_themes,
+    get_current_theme_name,
+    set_theme,
+    get_theme_info,
+    load_custom_themes,
+)
+from cyro.utils.console import (
+    console,
+    print_info,
+    print_success,
+    print_warning,
+    print_error,
+)
 
 
-def _show_welcome_panels():
+def _get_themed_color(semantic_name: str, theme_manager) -> str:
+    """Get color using provided theme manager."""
+    if theme_manager is None:
+        # Fallback to default theme
+        return get_theme_color(semantic_name)
+    return theme_manager.get_color(semantic_name)
+
+
+def _show_welcome_panels(theme_manager=None):
     """Show welcome and tip panels for chat mode."""
+
     # Welcome message for chat mode
     chat_welcome = Panel(
         Text.assemble(
-            ("🤖 ", get_theme_color("success")),
-            ("Welcome to Cyro!", f"bold {get_theme_color('text')}"),
-            ("\n\n", get_theme_color("text")),
-            ("/help", get_theme_color("info")),
-            (" for help, ", get_theme_color("text")),
-            ("/status", get_theme_color("info")),
-            (" for your current setup\n\n", get_theme_color("text")),
-            ("cwd: ", get_theme_color("text")),
-            (os.getcwd(), get_theme_color("info")),
+            ("🤖 ", _get_themed_color("success", theme_manager)),
+            ("Welcome to Cyro!", f"bold {_get_themed_color('text', theme_manager)}"),
+            ("\n\n", _get_themed_color("text", theme_manager)),
+            ("/help", _get_themed_color("info", theme_manager)),
+            (" for help, ", _get_themed_color("text", theme_manager)),
+            ("/status", _get_themed_color("info", theme_manager)),
+            (" for your current setup\n\n", _get_themed_color("text", theme_manager)),
+            ("cwd: ", _get_themed_color("text", theme_manager)),
+            (os.getcwd(), _get_themed_color("info", theme_manager)),
         ),
-        border_style=get_theme_color("border"),
+        border_style=_get_themed_color("border", theme_manager),
         padding=(0, 1),
     )
     console.print(chat_welcome)
-    
+
     # Add tip panel
     tip_panel = Panel(
         Text.assemble(
-            ("💡 ", get_theme_color("warning")),
-            ("Tip: ", f"bold {get_theme_color('text')}"),
-            ("Create custom slash commands by adding .md files to ", get_theme_color("text")),
-            (".cyro/commands/", get_theme_color("secondary")),
-            (" in your project or ", get_theme_color("text")),
-            ("~/.cyro/commands/", get_theme_color("secondary")), 
-            (" for commands that work in any project", get_theme_color("text")),
+            ("💡 ", _get_themed_color("warning", theme_manager)),
+            ("Tip: ", f"bold {_get_themed_color('text', theme_manager)}"),
+            (
+                "Create custom slash commands by adding .md files to ",
+                _get_themed_color("text", theme_manager),
+            ),
+            (".cyro/commands/", _get_themed_color("secondary", theme_manager)),
+            (" in your project or ", _get_themed_color("text", theme_manager)),
+            ("~/.cyro/commands/", _get_themed_color("secondary", theme_manager)),
+            (
+                " for commands that work in any project",
+                _get_themed_color("text", theme_manager),
+            ),
         ),
-        border_style=get_theme_color("border"),
+        border_style=_get_themed_color("border", theme_manager),
         padding=(0, 1),
     )
     console.print(tip_panel)
 
 
-def _create_user_panel(content: str) -> Panel:
+def _create_user_panel(content: str, theme_manager=None) -> Panel:
     """Create a standardized user message panel."""
     return Panel(
-        Text(content, style=get_theme_color("text")),
-        title=f"[bold {get_theme_color('success')}]You[/bold {get_theme_color('success')}]",
-        border_style=get_theme_color("success"),
+        Text(content, style=_get_themed_color("text", theme_manager)),
+        title=f"[bold {_get_themed_color('success', theme_manager)}]You[/bold {_get_themed_color('success', theme_manager)}]",
+        border_style=_get_themed_color("success", theme_manager),
     )
 
 
-def _create_ai_panel(content: str, agent: Optional[str] = None) -> Panel:
+def _create_ai_panel(
+    content: str, agent: Optional[str] = None, theme_manager=None
+) -> Panel:
     """Create a standardized AI response panel."""
     agent_suffix = f" ({agent})" if agent else ""
     return Panel(
-        Text(content, style=get_theme_color("text")),
-        title=f"[bold {get_theme_color('primary')}]Cyro{agent_suffix}[/bold {get_theme_color('primary')}]",
-        border_style=get_theme_color("primary"),
+        Text(content, style=_get_themed_color("text", theme_manager)),
+        title=f"[bold {_get_themed_color('primary', theme_manager)}]Cyro{agent_suffix}[/bold {_get_themed_color('primary', theme_manager)}]",
+        border_style=_get_themed_color("primary", theme_manager),
     )
 
 
-def _run_chat_loop(conversation_history: list, current_agent: Optional[str], verbose: bool):
+def _run_chat_loop(
+    conversation_history: list,
+    current_agent: Optional[str],
+    verbose: bool,
+    theme_manager=None,
+):
     """Run the main chat interaction loop."""
     try:
         while True:
@@ -79,7 +114,7 @@ def _run_chat_loop(conversation_history: list, current_agent: Optional[str], ver
                 # Get user input with agent indicator
                 agent_indicator = f"[{current_agent}]" if current_agent else "[auto]"
                 user_input = console.input(
-                    f"\n[bold {get_theme_color('primary')}]you{agent_indicator}>[/bold {get_theme_color('primary')}] "
+                    f"\n[bold {_get_themed_color('primary', theme_manager)}]you{agent_indicator}>[/bold {_get_themed_color('primary', theme_manager)}] "
                 ).strip()
 
                 if not user_input:
@@ -88,7 +123,11 @@ def _run_chat_loop(conversation_history: list, current_agent: Optional[str], ver
                 # Handle chat commands
                 if user_input.startswith("/"):
                     command_result = handle_chat_command(
-                        user_input, conversation_history, current_agent, verbose
+                        user_input,
+                        conversation_history,
+                        current_agent,
+                        verbose,
+                        theme_manager,
                     )
 
                     if command_result == "exit":
@@ -108,43 +147,58 @@ def _run_chat_loop(conversation_history: list, current_agent: Optional[str], ver
                 conversation_history.append({"role": "user", "content": user_input})
 
                 # Show user message
-                console.print(_create_user_panel(user_input))
+                console.print(_create_user_panel(user_input, theme_manager))
 
                 # Process message with AI agent
                 response = process_chat_message(
-                    user_input, conversation_history, current_agent, verbose
+                    user_input,
+                    conversation_history,
+                    current_agent,
+                    verbose,
+                    theme_manager,
                 )
 
                 # Add AI response to history
                 conversation_history.append({"role": "assistant", "content": response})
 
                 # Show AI response
-                console.print(_create_ai_panel(response, current_agent))
+                console.print(_create_ai_panel(response, current_agent, theme_manager))
 
             except KeyboardInterrupt:
-                console.print(f"\n[{get_theme_color('text_dim')}]Use /exit or /quit to leave chat mode[/{get_theme_color('text_dim')}]")
+                console.print(
+                    f"\n[{_get_themed_color('text_dim', theme_manager)}]Use /exit or /quit to leave chat mode[/{_get_themed_color('text_dim', theme_manager)}]"
+                )
                 continue
 
     except (EOFError, KeyboardInterrupt):
-        console.print(f"\n[{get_theme_color('text_dim')}]Exiting chat mode...[/{get_theme_color('text_dim')}]")
+        console.print(
+            f"\n[{_get_themed_color('text_dim', theme_manager)}]Exiting chat mode...[/{_get_themed_color('text_dim', theme_manager)}]"
+        )
 
 
-def start_chat_mode(agent: Optional[str] = None, verbose: bool = False):
+def start_chat_mode(
+    agent: Optional[str] = None, verbose: bool = False, theme_manager=None
+):
     """Start the interactive chat mode."""
-    _show_welcome_panels()
+    _show_welcome_panels(theme_manager)
 
     # Chat session state
     conversation_history = []
     current_agent = agent
 
-    _run_chat_loop(conversation_history, current_agent, verbose)
+    _run_chat_loop(conversation_history, current_agent, verbose, theme_manager)
 
     print_success("Chat session ended.")
 
 
-def start_chat_mode_with_query(initial_query: str, agent: Optional[str] = None, verbose: bool = False):
+def start_chat_mode_with_query(
+    initial_query: str,
+    agent: Optional[str] = None,
+    verbose: bool = False,
+    theme_manager=None,
+):
     """Start chat mode with an initial query."""
-    _show_welcome_panels()
+    _show_welcome_panels(theme_manager)
 
     # Chat session state
     conversation_history = []
@@ -156,30 +210,36 @@ def start_chat_mode_with_query(initial_query: str, agent: Optional[str] = None, 
         conversation_history.append({"role": "user", "content": initial_query})
 
         # Show initial query
-        console.print(_create_user_panel(initial_query))
+        console.print(_create_user_panel(initial_query, theme_manager))
 
         # Process initial message with AI agent
         response = process_chat_message(
-            initial_query, conversation_history, current_agent, verbose
+            initial_query, conversation_history, current_agent, verbose, theme_manager
         )
 
         # Add AI response to history
         conversation_history.append({"role": "assistant", "content": response})
 
         # Show AI response
-        console.print(_create_ai_panel(response, current_agent))
-        
+        console.print(_create_ai_panel(response, current_agent, theme_manager))
+
         # Continue with normal chat loop
-        _run_chat_loop(conversation_history, current_agent, verbose)
+        _run_chat_loop(conversation_history, current_agent, verbose, theme_manager)
 
     except (EOFError, KeyboardInterrupt):
-        console.print(f"\n[{get_theme_color('text_dim')}]Exiting chat mode...[/{get_theme_color('text_dim')}]")
+        console.print(
+            f"\n[{_get_themed_color('text_dim', theme_manager)}]Exiting chat mode...[/{_get_themed_color('text_dim', theme_manager)}]"
+        )
 
     print_success("Chat session ended.")
 
 
 def handle_chat_command(
-    command: str, history: list, current_agent: Optional[str], verbose: bool
+    command: str,
+    history: list,
+    current_agent: Optional[str],
+    verbose: bool,
+    theme_manager=None,
 ) -> str:
     """Handle special chat commands."""
     cmd_parts = command[1:].split()  # Remove leading '/'
@@ -196,7 +256,7 @@ def handle_chat_command(
         return "clear"
 
     elif cmd == "help":
-        show_chat_help()
+        show_chat_help(theme_manager)
         return "help"
 
     elif cmd == "agent":
@@ -208,19 +268,19 @@ def handle_chat_command(
             return "error"
 
     elif cmd == "history":
-        show_conversation_history(history)
+        show_conversation_history(history, theme_manager)
         return "history"
 
     elif cmd == "status":
-        show_chat_status(current_agent, len(history))
+        show_chat_status(current_agent, len(history), theme_manager)
         return "status"
 
     elif cmd == "config":
         if len(cmd_parts) > 1 and cmd_parts[1] == "theme":
             if len(cmd_parts) > 2:
-                handle_chat_theme_config(cmd_parts[2])
+                handle_chat_theme_config(cmd_parts[2], theme_manager)
             else:
-                handle_chat_theme_config("list")
+                handle_chat_theme_config("list", theme_manager)
             return "config"
         else:
             print_warning("Usage: /config theme [list|current|<theme_name>]")
@@ -231,46 +291,52 @@ def handle_chat_command(
         return "unknown"
 
 
-def show_chat_help():
+def show_chat_help(theme_manager=None):
     """Show available chat commands."""
     help_text = Text.assemble(
-        ("Chat Commands:\n\n", f"bold {get_theme_color('text')}"),
-        ("• ", get_theme_color("text")),
-        ("/exit, /quit, /q", f"bold {get_theme_color('secondary')}"),
-        (" - Exit chat mode\n", get_theme_color("text")),
-        ("• ", get_theme_color("text")),
-        ("/clear", f"bold {get_theme_color('secondary')}"),
-        (" - Clear conversation history\n", get_theme_color("text")),
-        ("• ", get_theme_color("text")),
-        ("/help", f"bold {get_theme_color('secondary')}"),
-        (" - Show this help\n", get_theme_color("text")),
-        ("• ", get_theme_color("text")),
-        ("/agent <name>", f"bold {get_theme_color('secondary')}"),
-        (" - Switch to specific agent\n", get_theme_color("text")),
-        ("• ", get_theme_color("text")),
-        ("/agent auto", f"bold {get_theme_color('secondary')}"),
-        (" - Use automatic agent selection\n", get_theme_color("text")),
-        ("• ", get_theme_color("text")),
-        ("/history", f"bold {get_theme_color('secondary')}"),
-        (" - Show conversation history\n", get_theme_color("text")),
-        ("• ", get_theme_color("text")),
-        ("/status", f"bold {get_theme_color('secondary')}"),
-        (" - Show chat session status\n", get_theme_color("text")),
-        ("• ", get_theme_color("text")),
-        ("/config theme", f"bold {get_theme_color('secondary')}"),
-        (" - Manage themes (list, current, <name>)\n", get_theme_color("text")),
+        ("Chat Commands:\n\n", f"bold {_get_themed_color('text', theme_manager)}"),
+        ("• ", _get_themed_color("text", theme_manager)),
+        ("/exit, /quit, /q", f"bold {_get_themed_color('secondary', theme_manager)}"),
+        (" - Exit chat mode\n", _get_themed_color("text", theme_manager)),
+        ("• ", _get_themed_color("text", theme_manager)),
+        ("/clear", f"bold {_get_themed_color('secondary', theme_manager)}"),
+        (" - Clear conversation history\n", _get_themed_color("text", theme_manager)),
+        ("• ", _get_themed_color("text", theme_manager)),
+        ("/help", f"bold {_get_themed_color('secondary', theme_manager)}"),
+        (" - Show this help\n", _get_themed_color("text", theme_manager)),
+        ("• ", _get_themed_color("text", theme_manager)),
+        ("/agent <name>", f"bold {_get_themed_color('secondary', theme_manager)}"),
+        (" - Switch to specific agent\n", _get_themed_color("text", theme_manager)),
+        ("• ", _get_themed_color("text", theme_manager)),
+        ("/agent auto", f"bold {_get_themed_color('secondary', theme_manager)}"),
+        (
+            " - Use automatic agent selection\n",
+            _get_themed_color("text", theme_manager),
+        ),
+        ("• ", _get_themed_color("text", theme_manager)),
+        ("/history", f"bold {_get_themed_color('secondary', theme_manager)}"),
+        (" - Show conversation history\n", _get_themed_color("text", theme_manager)),
+        ("• ", _get_themed_color("text", theme_manager)),
+        ("/status", f"bold {_get_themed_color('secondary', theme_manager)}"),
+        (" - Show chat session status\n", _get_themed_color("text", theme_manager)),
+        ("• ", _get_themed_color("text", theme_manager)),
+        ("/config theme", f"bold {_get_themed_color('secondary', theme_manager)}"),
+        (
+            " - Manage themes (list, current, <name>)\n",
+            _get_themed_color("text", theme_manager),
+        ),
     )
 
     panel = Panel(
         help_text,
-        title=f"[bold {get_theme_color('primary')}]Chat Help[/bold {get_theme_color('primary')}]",
-        border_style=get_theme_color("border"),
+        title=f"[bold {_get_themed_color('primary', theme_manager)}]Chat Help[/bold {_get_themed_color('primary', theme_manager)}]",
+        border_style=_get_themed_color("border", theme_manager),
         padding=(1, 2),
     )
     console.print(panel)
 
 
-def show_conversation_history(history: list):
+def show_conversation_history(history: list, theme_manager=None):
     """Show the conversation history."""
     if not history:
         print_info("No conversation history yet.")
@@ -279,107 +345,129 @@ def show_conversation_history(history: list):
     history_text = Text()
     for i, message in enumerate(history, 1):
         role = "You" if message["role"] == "user" else "Cyro"
-        role_style = get_theme_color("success") if message["role"] == "user" else get_theme_color("primary")
+        role_style = (
+            _get_themed_color("success", theme_manager)
+            if message["role"] == "user"
+            else _get_themed_color("primary", theme_manager)
+        )
 
-        history_text.append(f"{i}. ", style=get_theme_color("info"))
+        history_text.append(f"{i}. ", style=_get_themed_color("info", theme_manager))
         history_text.append(f"{role}: ", style=f"bold {role_style}")
-        history_text.append(f"{message['content']}\n\n", style=get_theme_color("text"))
+        history_text.append(
+            f"{message['content']}\n\n", style=_get_themed_color("text", theme_manager)
+        )
 
     panel = Panel(
         history_text,
-        title=f"[bold {get_theme_color('primary')}]Conversation History[/bold {get_theme_color('primary')}]",
-        border_style=get_theme_color("border"),
+        title=f"[bold {_get_themed_color('primary', theme_manager)}]Conversation History[/bold {_get_themed_color('primary', theme_manager)}]",
+        border_style=_get_themed_color("border", theme_manager),
     )
     console.print(panel)
 
 
-def show_chat_status(agent: Optional[str], message_count: int):
+def show_chat_status(agent: Optional[str], message_count: int, theme_manager=None):
     """Show current chat session status."""
     status_text = Text.assemble(
-        ("Current Agent: ", get_theme_color("text")),
-        (agent or "auto", f"bold {get_theme_color('info')}"),
-        ("\nMessages in History: ", get_theme_color("text")),
-        (str(message_count), f"bold {get_theme_color('success')}"),
-        ("\nSession Status: ", get_theme_color("text")),
-        ("Active", f"bold {get_theme_color('success')}"),
+        ("Current Agent: ", _get_themed_color("text", theme_manager)),
+        (agent or "auto", f"bold {_get_themed_color('info', theme_manager)}"),
+        ("\nMessages in History: ", _get_themed_color("text", theme_manager)),
+        (str(message_count), f"bold {_get_themed_color('success', theme_manager)}"),
+        ("\nSession Status: ", _get_themed_color("text", theme_manager)),
+        ("Active", f"bold {_get_themed_color('success', theme_manager)}"),
     )
 
     panel = Panel(
         status_text,
-        title=f"[bold {get_theme_color('primary')}]Chat Status[/bold {get_theme_color('primary')}]",
-        border_style=get_theme_color("border"),
+        title=f"[bold {_get_themed_color('primary', theme_manager)}]Chat Status[/bold {_get_themed_color('primary', theme_manager)}]",
+        border_style=_get_themed_color("border", theme_manager),
     )
     console.print(panel)
 
 
-def handle_chat_theme_config(action: str):
+def handle_chat_theme_config(action: str, theme_manager):
     """Handle theme configuration commands in chat mode."""
-    from cyro.config.themes import list_themes, get_current_theme_name, set_theme, get_theme_info, load_custom_themes
-    from cyro.utils.console import print_info, print_success, print_error
-    
+
     if action == "list":
         # Load custom themes first
         themes_dir = "~/.cyro/themes"
-        custom_count = load_custom_themes(themes_dir)
-        
-        all_themes = list_themes()
-        current_theme = get_current_theme_name()
-        
+        custom_count = load_custom_themes(theme_manager, themes_dir)
+
+        all_themes = list_themes(theme_manager)
+        current_theme = get_current_theme_name(theme_manager)
+
         # Simple list format for chat
         themes_text = Text()
-        themes_text.append("Available themes:\n\n", style=get_theme_color("text"))
-        
+        themes_text.append(
+            "Available themes:\n\n", style=get_theme_color("text", theme_manager)
+        )
+
         for theme_name in all_themes:
             is_current = " (current)" if theme_name == current_theme else ""
-            themes_text.append(f"• {theme_name}{is_current}\n", 
-                             style=get_theme_color("success") if is_current else get_theme_color("text"))
-        
+            themes_text.append(
+                f"• {theme_name}{is_current}\n",
+                style=get_theme_color("success", theme_manager)
+                if is_current
+                else get_theme_color("text", theme_manager),
+            )
+
         if custom_count > 0:
-            themes_text.append(f"\n{custom_count} custom theme{'s' if custom_count != 1 else ''} loaded from {themes_dir}", 
-                             style=get_theme_color("text_dim"))
-        
+            themes_text.append(
+                f"\n{custom_count} custom theme{'s' if custom_count != 1 else ''} loaded from {themes_dir}",
+                style=get_theme_color("text_dim", theme_manager),
+            )
+
         panel = Panel(
             themes_text,
-            title=f"[bold {get_theme_color('primary')}]Themes[/bold {get_theme_color('primary')}]",
-            border_style=get_theme_color("border"),
+            title=f"[bold {get_theme_color('primary', theme_manager)}]Themes[/bold {get_theme_color('primary', theme_manager)}]",
+            border_style=get_theme_color("border", theme_manager),
         )
         console.print(panel)
-        
+
     elif action == "current":
-        current = get_current_theme_name()
-        theme_info = get_theme_info(current)
-        
+        current = get_current_theme_name(theme_manager)
+        theme_info = get_theme_info(current, theme_manager)
+
         if theme_info:
-            console.print(f"Current theme: [{get_theme_color('primary')}]{theme_info['name']}[/{get_theme_color('primary')}]")
-            console.print(f"[{get_theme_color('text_dim')}]{theme_info['description']}[/{get_theme_color('text_dim')}]")
+            console.print(
+                f"Current theme: [{get_theme_color('primary', theme_manager)}]{theme_info['name']}[/{get_theme_color('primary', theme_manager)}]"
+            )
+            console.print(
+                f"[{get_theme_color('text_dim', theme_manager)}]{theme_info['description']}[/{get_theme_color('text_dim', theme_manager)}]"
+            )
         else:
-            console.print(f"Current theme: [{get_theme_color('primary')}]{current}[/{get_theme_color('primary')}]")
+            console.print(
+                f"Current theme: [{get_theme_color('primary', theme_manager)}]{current}[/{get_theme_color('primary', theme_manager)}]"
+            )
     else:
         # Try to switch to the specified theme
         themes_dir = "~/.cyro/themes"
-        custom_count = load_custom_themes(themes_dir)
-        
-        if set_theme(action):
-            theme_info = get_theme_info(action)
+        custom_count = load_custom_themes(theme_manager, themes_dir)
+
+        if set_theme(theme_manager, action):
+            theme_info = get_theme_info(action, theme_manager)
             if theme_info:
                 print_success(f"Switched to '{theme_info['name']}' theme")
-                console.print(f"[{get_theme_color('text_dim')}]{theme_info['description']}[/{get_theme_color('text_dim')}]")
+                console.print(
+                    f"[{get_theme_color('text_dim', theme_manager)}]{theme_info['description']}[/{get_theme_color('text_dim', theme_manager)}]"
+                )
             else:
                 print_success(f"Switched to '{action}' theme")
         else:
-            available_themes = list_themes()
+            available_themes = list_themes(theme_manager)
             print_error(f"Theme '{action}' not found")
-            console.print(f"Available: [{get_theme_color('info')}]{', '.join(available_themes)}[/{get_theme_color('info')}]")
+            console.print(
+                f"Available: [{get_theme_color('info', theme_manager)}]{', '.join(available_themes)}[/{get_theme_color('info', theme_manager)}]"
+            )
 
 
 def process_chat_message(
-    message: str, history: list, agent: Optional[str], verbose: bool
+    message: str, history: list, agent: Optional[str], verbose: bool, theme_manager=None
 ) -> str:
     """Process a chat message through the AI agent."""
     if verbose:
-        console.print(f"[{get_theme_color('text_dim')}]Processing message with agent: {agent or 'auto'}[/{get_theme_color('text_dim')}]")
+        console.print(
+            f"[{_get_themed_color('text_dim', theme_manager)}]Processing message with agent: {agent or 'auto'}[/{_get_themed_color('text_dim', theme_manager)}]"
+        )
 
     # TODO: Implement actual AI agent processing
     return f"🚧 AI processing not yet implemented.\n\nReceived: '{message}'"
-
-
