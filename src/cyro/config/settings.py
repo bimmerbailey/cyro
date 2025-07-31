@@ -5,9 +5,9 @@ This module defines the configuration structure for Cyro with support
 for TOML files and environment variables.
 """
 
-from typing import List
+from typing import List, cast
 
-from pydantic import AnyHttpUrl, BaseModel
+from pydantic import AnyHttpUrl, BaseModel, Field
 from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_settings import (
@@ -55,7 +55,9 @@ class CyroConfig(BaseSettings):
     port: int = 11434
     model: str = "llama3.2"
     timeout: int = 30
-    base_url: AnyHttpUrl = "http://localhost:11434/v1"
+    base_url: AnyHttpUrl = Field(
+        default=cast("AnyHttpUrl", "http://localhost:11434/v1")
+    )
 
     # Agent configuration
     agents: AgentConfig = AgentConfig()
