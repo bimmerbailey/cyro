@@ -10,21 +10,15 @@ from typing import Optional
 
 import typer
 from rich.panel import Panel
+from rich.table import Table
 from rich.text import Text
 
 from cyro import __version__
 from cyro.cli.chat import start_chat_mode, start_chat_mode_with_query
-from cyro.config.themes import (
-    get_theme_color,
-    create_theme_manager,
-    list_themes,
-    get_current_theme_name,
-    set_theme,
-    get_theme_info,
-    load_custom_themes,
-)
-from cyro.utils.console import console, print_info, print_success, print_error
-from rich.table import Table
+from cyro.config.themes import (create_theme_manager, get_current_theme_name,
+                                get_theme_color, get_theme_info, list_themes,
+                                load_custom_themes, set_theme)
+from cyro.utils.console import console, print_error, print_info, print_success
 
 # Create the main Typer application
 app = typer.Typer(

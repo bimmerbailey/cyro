@@ -26,10 +26,10 @@ Usage:
     theme_manager = ThemeManager()
 """
 
+import tomllib
 from pathlib import Path
 from typing import Dict, List, Optional
 
-import tomllib
 from pydantic import BaseModel, Field, ValidationError
 
 
@@ -265,7 +265,7 @@ class ThemeManager:
             Rich color string that is guaranteed to be valid
         """
         current_theme = self._themes.get(self._current_theme_name)
-        
+
         # Try current theme first (if it's not already cyro)
         if (
             current_theme
@@ -406,8 +406,7 @@ class ThemeManager:
         This removes all custom themes and resets to the default theme.
         """
         self._themes = DEFAULT_THEMES.copy()
-        if self._current_theme_name not in self._themes:
-            self._current_theme_name = "cyro"
+        self._current_theme_name = "cyro"
 
 
 def create_theme_manager(default_theme: str = "cyro") -> ThemeManager:

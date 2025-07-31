@@ -77,7 +77,9 @@ def print_table(data: list[dict], title: str = "Table") -> None:
         print_info("No data to display", title)
         return
 
-    table = Table(title=title, show_header=True, header_style=get_theme_color("table_header"))
+    table = Table(
+        title=title, show_header=True, header_style=get_theme_color("table_header")
+    )
 
     # Add columns based on first row keys
     for key in data[0].keys():
@@ -110,7 +112,9 @@ def prompt_user(message: str, default: Optional[str] = None) -> str:
         response = console.input(prompt_text).strip()
         return response if response else (default or "")
     except (KeyboardInterrupt, EOFError):
-        console.print(f"\n[{get_theme_color('text_dim')}]Operation cancelled[/{get_theme_color('text_dim')}]")
+        console.print(
+            f"\n[{get_theme_color('text_dim')}]Operation cancelled[/{get_theme_color('text_dim')}]"
+        )
         return ""
 
 
@@ -125,7 +129,9 @@ def confirm(message: str, default: bool = False) -> bool:
             return default
         return response.startswith("y")
     except (KeyboardInterrupt, EOFError):
-        console.print(f"\n[{get_theme_color('text_dim')}]Operation cancelled[/{get_theme_color('text_dim')}]")
+        console.print(
+            f"\n[{get_theme_color('text_dim')}]Operation cancelled[/{get_theme_color('text_dim')}]"
+        )
         return False
 
 
@@ -136,9 +142,18 @@ def print_welcome():
             ("Welcome to ", get_theme_color("text")),
             ("Cyro", f"bold {get_theme_color('primary')}"),
             (" - Terminal-based AI coding agent\n\n", get_theme_color("text")),
-            ("🤖 Privacy-first AI assistant with local Ollama support\n", get_theme_color("success")),
-            ("🔧 Dynamic subagent creation through markdown configuration\n", get_theme_color("success")),
-            ("🚀 Extensible architecture for multiple AI providers\n\n", get_theme_color("success")),
+            (
+                "🤖 Privacy-first AI assistant with local Ollama support\n",
+                get_theme_color("success"),
+            ),
+            (
+                "🔧 Dynamic subagent creation through markdown configuration\n",
+                get_theme_color("success"),
+            ),
+            (
+                "🚀 Extensible architecture for multiple AI providers\n\n",
+                get_theme_color("success"),
+            ),
         ),
         title=f"[bold {get_theme_color('primary')}]Cyro AI Coding Agent[/bold {get_theme_color('primary')}]",
         border_style=get_theme_color("border"),
