@@ -8,6 +8,7 @@ dependencies = [
     "pydantic-ai-slim[openai]>=0.4.9",
     "rich>=14.1.0",
     "typer>=0.16.0",
+    "toml>=0.10.2",
 ]
 
 [project.scripts]
@@ -23,5 +24,4 @@ dev = [
     "pyright>=1.1.403",
     "pytest>=8.0.0",
     "ruff>=0.12.5",
-    "toml>=0.10.2",
 ]

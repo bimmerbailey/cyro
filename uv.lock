@@ -61,6 +61,7 @@ source = { editable = "." }
 dependencies = [
     { name = "pydantic-ai-slim", extra = ["openai"] },
     { name = "rich" },
+    { name = "toml" },
     { name = "typer" },
 ]
 
@@ -70,13 +71,13 @@ dev = [
     { name = "pyright" },
     { name = "pytest" },
     { name = "ruff" },
-    { name = "toml" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "pydantic-ai-slim", extras = ["openai"], specifier = ">=0.4.9" },
     { name = "rich", specifier = ">=14.1.0" },
+    { name = "toml", specifier = ">=0.10.2" },
     { name = "typer", specifier = ">=0.16.0" },
 ]
 
@@ -86,7 +87,6 @@ dev = [
     { name = "pyright", specifier = ">=1.1.403" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "ruff", specifier = ">=0.12.5" },
-    { name = "toml", specifier = ">=0.10.2" },
 ]
 
 [[package]]
