@@ -1,24 +1,21 @@
 """
-Configuration models for Cyro using Pydantic.
+Configuration models for Cyro using Pydantic Settings.
 
 This module defines the configuration structure for Cyro with support
 for TOML files and environment variables.
 """
 
-from typing import Dict, List, Optional
+from typing import List
 
-from pydantic import BaseModel
-
-
-class ProviderConfig(BaseModel):
-    """Configuration for AI providers."""
-
-    host: str = "localhost"
-    port: int = 11434
-    model: str = "llama3.2"
-    timeout: int = 30
-    api_key: Optional[str] = None
-    organization: Optional[str] = None
+from pydantic import AnyHttpUrl, BaseModel
+from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.providers.openai import OpenAIProvider
+from pydantic_settings import (
+    BaseSettings,
+    SettingsConfigDict,
+    PydanticBaseSettingsSource,
+    TomlConfigSettingsSource,
+)
 
 
 class AgentConfig(BaseModel):
@@ -35,11 +32,17 @@ class SecurityConfig(BaseModel):
     sandbox_mode: bool = True
     require_approval: List[str] = ["filesystem", "code-execution"]
     max_file_size: str = "10MB"
-    allowed_extensions: List[str] = [".py", ".js", ".ts", ".md", ".txt"]
 
 
-class CyroConfig(BaseModel):
-    """Main configuration model for Cyro."""
+class CyroConfig(BaseSettings):
+    """Main configuration model for Cyro with support for TOML files and environment variables."""
+
+    model_config = SettingsConfigDict(
+        toml_file=["~/.cyro/config.toml"],
+        env_prefix="CYRO_",
+        env_nested_delimiter="__",
+        case_sensitive=False,
+    )
 
     # General settings
     default_agent: str = "auto"
@@ -47,9 +50,12 @@ class CyroConfig(BaseModel):
     color_output: bool = True
     auto_update: bool = True
 
-    # Provider configurations
-    default_provider: str = "ollama"
-    providers: Dict[str, ProviderConfig] = {}
+    # Provider configurations (Ollama-focused)
+    host: str = "localhost"
+    port: int = 11434
+    model: str = "llama3.2"
+    timeout: int = 30
+    base_url: AnyHttpUrl = "http://localhost:11434/v1"
 
     # Agent configuration
     agents: AgentConfig = AgentConfig()
@@ -62,3 +68,35 @@ class CyroConfig(BaseModel):
     show_progress: bool = True
     streaming: bool = True
     panel_style: str = "rounded"
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        """
+        Customize settings sources priority:
+        1. Initialization arguments (highest priority)
+        2. Environment variables (CYRO_*)
+        3. TOML configuration files
+        """
+        return (
+            init_settings,  # Highest priority
+            env_settings,  # Environment variables
+            TomlConfigSettingsSource(settings_cls),  # TOML files
+        )
+
+    @property
+    def provider(self) -> OpenAIModel:
+        # TODO: this will expand over time
+        #  we might need a token as well
+        """Get the configured AI model provider."""
+        provider_instance = OpenAIProvider(base_url=str(self.base_url))
+        return OpenAIModel(
+            model_name=self.model,
+            provider=provider_instance,
+        )
