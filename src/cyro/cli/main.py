@@ -10,11 +10,15 @@ from typing import Optional
 
 import typer
 from rich.panel import Panel
+from rich.table import Table
 from rich.text import Text
 
 from cyro import __version__
 from cyro.cli.chat import start_chat_mode, start_chat_mode_with_query
-from cyro.utils.console import console
+from cyro.config.themes import (create_theme_manager, get_current_theme_name,
+                                get_theme_color, get_theme_info, list_themes,
+                                load_custom_themes, set_theme)
+from cyro.utils.console import console, print_error, print_info, print_success
 
 # Create the main Typer application
 app = typer.Typer(
@@ -25,15 +29,27 @@ app = typer.Typer(
 )
 
 
+def _get_color(semantic_name: str, ctx: typer.Context) -> str:
+    """Helper to get theme color from context."""
+    theme_manager = ctx.obj
+    if theme_manager is None:
+        # Fallback to global theme manager
+        return get_theme_color(semantic_name)
+    return theme_manager.get_color(semantic_name)
+
+
 def version_callback(value: bool):
     """Show version information."""
     if value:
-        console.print(f"Cyro version {__version__}", style="bold yellow")
+        console.print(
+            f"Cyro version {__version__}", style=f"bold {get_theme_color('primary')}"
+        )
         raise typer.Exit()
 
 
 @app.callback()
 def main(
+    ctx: typer.Context,
     agent: Optional[str] = typer.Option(
         None, "--agent", "-a", help="Specify which agent to use"
     ),
@@ -64,7 +80,9 @@ def main(
     - cyro print "your query"        # Print response and exit
     - cyro --agent code-reviewer chat "review this code"
     """
-    pass
+    # Initialize theme manager and store in context
+    ctx.ensure_object(dict)
+    ctx.obj = create_theme_manager()
 
 
 def execute_print_mode(
@@ -73,14 +91,14 @@ def execute_print_mode(
     """Execute a query in print mode and exit."""
     if verbose:
         console.print(
-            f"[dim]Executing query with agent: {agent or 'auto'}, model: {model or 'default'}[/dim]"
+            f"[{get_theme_color('text_dim')}]Executing query with agent: {agent or 'auto'}, model: {model or 'default'}[/{get_theme_color('text_dim')}]"
         )
 
     # Create styled panel for the query
     query_panel = Panel(
-        Text(query, style="bright_white"),
-        title="[bold yellow]Query[/bold yellow]",
-        border_style="yellow",
+        Text(query, style=get_theme_color("text")),
+        title=f"[bold {get_theme_color('primary')}]Query[/bold {get_theme_color('primary')}]",
+        border_style=get_theme_color("border"),
     )
     console.print(query_panel)
 
@@ -88,16 +106,17 @@ def execute_print_mode(
     response_panel = Panel(
         Text(
             f"🚧 AI execution not yet implemented.\n\nReceived: '{query}'",
-            style="bright_yellow",
+            style=get_theme_color("warning"),
         ),
-        title="[bold bright_green]Response[/bold bright_green]",
-        border_style="bright_green",
+        title=f"[bold {get_theme_color('success')}]Response[/bold {get_theme_color('success')}]",
+        border_style=get_theme_color("success"),
     )
     console.print(response_panel)
 
 
 @app.command()
 def chat(
+    ctx: typer.Context,
     query: Optional[str] = typer.Argument(None, help="Initial query to start with"),
     agent: Optional[str] = typer.Option(
         None, "--agent", "-a", help="Specify which agent to chat with"
@@ -108,9 +127,9 @@ def chat(
 ):
     """Start an interactive chat session."""
     if query:
-        start_chat_mode_with_query(query, agent, verbose)
+        start_chat_mode_with_query(query, agent, verbose, ctx.obj)
     else:
-        start_chat_mode(agent, verbose)
+        start_chat_mode(agent, verbose, ctx.obj)
 
 
 @app.command("print")
@@ -136,39 +155,155 @@ def agent_cmd(
 ):
     """Manage AI agents."""
     # TODO: Implement agent management
-    console.print(f"🚧 Agent management not yet implemented. Action: {action}")
+    console.print(
+        f"[{get_theme_color('warning')}]🚧 Agent management not yet implemented. Action: {action}[/{get_theme_color('warning')}]"
+    )
 
 
 @app.command("config")
 def config_cmd(
-    action: str = typer.Argument(..., help="Action to perform (show, set, etc.)"),
+    ctx: typer.Context,
+    subcommand: str = typer.Argument(..., help="Configuration area (theme, etc.)"),
+    action: Optional[str] = typer.Argument(
+        None, help="Action to perform or theme name"
+    ),
 ):
     """Manage configuration."""
-    # TODO: Implement config management
-    console.print(f"🚧 Configuration management not yet implemented. Action: {action}")
+    if subcommand == "theme":
+        handle_theme_config(action, ctx)
+    else:
+        console.print(
+            f"[{_get_color('warning', ctx)}]🚧 Configuration area '{subcommand}' not yet implemented[/{_get_color('warning', ctx)}]"
+        )
+
+
+def handle_theme_config(action: Optional[str], ctx: typer.Context):
+    """Handle theme configuration commands."""
+
+    theme_manager = ctx.obj
+
+    if action is None or action == "list":
+        # Show available themes
+        show_theme_list(ctx)
+    elif action == "current":
+        # Show current theme
+        current = get_current_theme_name(theme_manager)
+        theme_info = get_theme_info(current, theme_manager)
+
+        if theme_info:
+            console.print(
+                f"Current theme: [{_get_color('primary', ctx)}]{theme_info['name']}[/{_get_color('primary', ctx)}]"
+            )
+            console.print(
+                f"Description: [{_get_color('text', ctx)}]{theme_info['description']}[/{_get_color('text', ctx)}]"
+            )
+        else:
+            console.print(
+                f"Current theme: [{_get_color('primary', ctx)}]{current}[/{_get_color('primary', ctx)}]"
+            )
+    else:
+        # Try to switch to the specified theme
+        # First load custom themes to make sure we have everything available
+        themes_dir = "~/.cyro/themes"
+        custom_count = load_custom_themes(theme_manager, themes_dir)
+        if custom_count > 0:
+            print_info(
+                f"Loaded {custom_count} custom theme{'s' if custom_count != 1 else ''}"
+            )
+
+        if set_theme(theme_manager, action):
+            theme_info = get_theme_info(action, theme_manager)
+            if theme_info:
+                print_success(f"Switched to '{theme_info['name']}' theme")
+                console.print(
+                    f"[{_get_color('text_dim', ctx)}]{theme_info['description']}[/{_get_color('text_dim', ctx)}]"
+                )
+            else:
+                print_success(f"Switched to '{action}' theme")
+        else:
+            available_themes = list_themes(theme_manager)
+            print_error(f"Theme '{action}' not found")
+            console.print(
+                f"Available themes: [{_get_color('info', ctx)}]{', '.join(available_themes)}[/{_get_color('info', ctx)}]"
+            )
+
+
+def show_theme_list(ctx: typer.Context):
+    """Display a formatted list of available themes."""
+
+    theme_manager = ctx.obj
+
+    # Load custom themes first
+    themes_dir = "~/.cyro/themes"
+    custom_count = load_custom_themes(theme_manager, themes_dir)
+
+    all_themes = list_themes(theme_manager)
+    current_theme = get_current_theme_name(theme_manager)
+
+    # Prepare table data
+    table_data = []
+    for theme_name in all_themes:
+        theme_info = get_theme_info(theme_name, theme_manager)
+        is_current = "✓" if theme_name == current_theme else ""
+
+        table_data.append(
+            {
+                "current": is_current,
+                "name": theme_name,
+                "description": theme_info["description"]
+                if theme_info
+                else "No description",
+            }
+        )
+
+    # Print header info
+    if custom_count > 0:
+        console.print(
+            f"[{_get_color('text_dim', ctx)}]Found {custom_count} custom theme{'s' if custom_count != 1 else ''} in {themes_dir}[/{_get_color('text_dim', ctx)}]"
+        )
+        console.print()
+
+    # Print themes table
+    table = Table(
+        title="Available Themes",
+        show_header=True,
+        header_style=_get_color("table_header", ctx),
+    )
+    table.add_column("", style=_get_color("success", ctx), width=3)
+    table.add_column("Theme", style=f"bold {_get_color('primary', ctx)}")
+    table.add_column("Description", style=_get_color("table_row", ctx))
+
+    for theme in table_data:
+        table.add_row(theme["current"], theme["name"], theme["description"])
+
+    console.print(table)
+    console.print()
+    console.print(
+        f"[{_get_color('text_dim', ctx)}]Use 'cyro config theme <name>' to switch themes[/{_get_color('text_dim', ctx)}]"
+    )
 
 
 @app.command()
-def status():
+def status(ctx: typer.Context):
     """Show current Cyro setup and status."""
     status_text = Text.assemble(
-        ("Cyro Status\n\n", "bold yellow"),
-        ("Version: ", "bright_white"),
-        (__version__, "bold bright_green"),
-        ("\nWorking Directory: ", "bright_white"),
-        (os.getcwd(), "bold orange"),
-        ("\nConfig: ", "bright_white"),
-        ("Default", "yellow"),
-        ("\nAgent: ", "bright_white"),
-        ("Auto-select", "yellow"),
-        ("\nModel: ", "bright_white"),
-        ("Default (Ollama)", "yellow"),
+        ("Cyro Status\n\n", f"bold {_get_color('primary', ctx)}"),
+        ("Version: ", _get_color("text", ctx)),
+        (__version__, f"bold {_get_color('success', ctx)}"),
+        ("\nWorking Directory: ", _get_color("text", ctx)),
+        (os.getcwd(), f"bold {_get_color('secondary', ctx)}"),
+        ("\nConfig: ", _get_color("text", ctx)),
+        ("Default", _get_color("info", ctx)),
+        ("\nAgent: ", _get_color("text", ctx)),
+        ("Auto-select", _get_color("info", ctx)),
+        ("\nModel: ", _get_color("text", ctx)),
+        ("Default (Ollama)", _get_color("info", ctx)),
     )
 
     panel = Panel(
         status_text,
-        title="[bold yellow]Status[/bold yellow]",
-        border_style="yellow",
+        title=f"[bold {_get_color('primary', ctx)}]Status[/bold {_get_color('primary', ctx)}]",
+        border_style=_get_color("border", ctx),
         padding=(1, 2),
     )
     console.print(panel)

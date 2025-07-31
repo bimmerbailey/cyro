@@ -9,7 +9,7 @@ help:
 	@echo "  lint        - Run ruff linter"
 	@echo "  format      - Format code with ruff and isort"
 	@echo "  type-check  - Run pyright type checking"
-	@echo "  test        - Run tests (when available)"
+	@echo "  test        - Run pytest tests"
 	@echo "  run         - Run the application"
 	@echo "  build       - Build the package"
 	@echo "  check       - Run all code quality checks (lint + type-check)"
@@ -41,10 +41,9 @@ format:
 type-check:
 	uv run pyright src/
 
-# Testing (placeholder for when tests are added)
+# Testing
 test:
-	@echo "No tests configured yet"
-	# uv run pytest
+	uv run pytest tests/ -v
 
 # Development
 run:
