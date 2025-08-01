@@ -11,11 +11,21 @@ from typing import Optional
 from rich.panel import Panel
 from rich.text import Text
 
-from cyro.config.themes import (get_current_theme_name, get_theme_color,
-                                get_theme_info, list_themes,
-                                load_custom_themes, set_theme)
-from cyro.utils.console import (console, print_error, print_info,
-                                print_success, print_warning)
+from cyro.config.themes import (
+    get_current_theme_name,
+    get_theme_color,
+    get_theme_info,
+    list_themes,
+    load_custom_themes,
+    set_theme,
+)
+from cyro.utils.console import (
+    console,
+    print_error,
+    print_info,
+    print_success,
+    print_warning,
+)
 
 
 def _get_themed_color(semantic_name: str, theme_manager) -> str:

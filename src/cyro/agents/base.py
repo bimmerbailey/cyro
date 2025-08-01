@@ -141,12 +141,17 @@ class CyroAgent:
         self.id = uuid4()
         self.metadata = config.metadata
         self.config = config
-        self.agent = Agent(
-            model,
-            system_prompt=config.system_prompt,
-            instructions=config.instructions,
-            output_type=config.result_type,
-        )
+
+        # Build agent kwargs, only include output_type if result_type is not None
+        agent_kwargs = {
+            "model": model,
+            "system_prompt": config.system_prompt,
+            "instructions": config.instructions,
+        }
+        if config.result_type is not None:
+            agent_kwargs["output_type"] = config.result_type
+
+        self.agent = Agent(**agent_kwargs)
 
     def run_sync(self, prompt: str, output_type: Type[BaseModel] | None = None):
         """Delegate to the underlying PydanticAI Agent."""

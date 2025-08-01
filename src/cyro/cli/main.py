@@ -15,9 +15,15 @@ from rich.text import Text
 
 from cyro import __version__
 from cyro.cli.chat import start_chat_mode, start_chat_mode_with_query
-from cyro.config.themes import (create_theme_manager, get_current_theme_name,
-                                get_theme_color, get_theme_info, list_themes,
-                                load_custom_themes, set_theme)
+from cyro.config.themes import (
+    create_theme_manager,
+    get_current_theme_name,
+    get_theme_color,
+    get_theme_info,
+    list_themes,
+    load_custom_themes,
+    set_theme,
+)
 from cyro.utils.console import console, print_error, print_info, print_success
 
 # Create the main Typer application

@@ -11,10 +11,10 @@ from pydantic import BaseModel, Field
 from pydantic.types import UUID4
 
 from cyro.agents.base import (
-    CyroAgent,
-    AgentRegistry,
     AgentConfig,
     AgentMetadata,
+    AgentRegistry,
+    CyroAgent,
     make_general_agent,
 )
 from cyro.config.settings import CyroConfig

@@ -12,6 +12,7 @@ from cyro.agents.base import AgentConfig, AgentMetadata
 
 class MockResult(BaseModel):
     """Mock result type for AgentConfig testing."""
+
     answer: str
     confidence: float
 
@@ -35,9 +36,9 @@ You are a test agent. Your role is to help with testing and validation tasks.
 - Validate inputs carefully
 - Provide clear feedback
 """
-        
+
         config = AgentConfig.from_markdown(markdown_content)
-        
+
         assert config.metadata.name == "test-agent"
         assert config.metadata.description == "A test agent for unit testing"
         assert config.metadata.version == "2.0"
@@ -53,11 +54,11 @@ description: Minimal test agent
 ---
 
 Basic system prompt content."""
-        
+
         config = AgentConfig.from_markdown(markdown_content)
-        
+
         assert config.metadata.name == "minimal-agent"
-        assert config.metadata.description == "Minimal test agent"  
+        assert config.metadata.description == "Minimal test agent"
         assert config.metadata.version == "1.0"  # default version
         assert config.tools is None
         assert config.system_prompt == "Basic system prompt content."
@@ -69,7 +70,7 @@ description: Agent without name
 ---
 
 System prompt content."""
-        
+
         with pytest.raises(ValueError, match="Agent missing required 'name' field"):
             AgentConfig.from_markdown(markdown_content)
 
@@ -80,8 +81,10 @@ name: no-description-agent
 ---
 
 System prompt content."""
-        
-        with pytest.raises(ValueError, match="Agent missing required 'description' field"):
+
+        with pytest.raises(
+            ValueError, match="Agent missing required 'description' field"
+        ):
             AgentConfig.from_markdown(markdown_content)
 
     def test_invalid_yaml_frontmatter_format(self):
@@ -89,8 +92,10 @@ System prompt content."""
         invalid_content = """# Not YAML frontmatter
 
 This doesn't have proper frontmatter."""
-        
-        with pytest.raises(ValueError, match="Invalid agent format: missing YAML frontmatter"):
+
+        with pytest.raises(
+            ValueError, match="Invalid agent format: missing YAML frontmatter"
+        ):
             AgentConfig.from_markdown(invalid_content)
 
     def test_empty_tools_field(self):
@@ -102,7 +107,7 @@ tools:
 ---
 
 System prompt."""
-        
+
         config = AgentConfig.from_markdown(markdown_content)
         # Empty tools field becomes empty string (not parsed as list)
         assert config.tools == ""
@@ -116,7 +121,7 @@ tools: filesystem
 ---
 
 System prompt."""
-        
+
         config = AgentConfig.from_markdown(markdown_content)
         assert config.tools == ["filesystem"]
 
@@ -129,7 +134,7 @@ tools: filesystem , git,  web  , execution
 ---
 
 System prompt."""
-        
+
         config = AgentConfig.from_markdown(markdown_content)
         assert config.tools == ["filesystem", "git", "web", "execution"]
 
@@ -141,9 +146,9 @@ description: Agent with result type
 ---
 
 System prompt."""
-        
+
         config = AgentConfig.from_markdown(markdown_content, result_type=MockResult)
-        
+
         assert config.result_type == MockResult
         assert config.metadata.name == "typed-agent"
 
@@ -155,9 +160,9 @@ description: Agent from bytes input
 ---
 
 System prompt from bytes."""
-        
+
         config = AgentConfig.from_markdown(markdown_content)
-        
+
         assert config.metadata.name == "bytes-agent"
         assert config.system_prompt == "System prompt from bytes."
 
@@ -185,9 +190,9 @@ Here are some example interactions:
 - Answer: "First analyze the current state..."
 
 Remember to be thorough and accurate."""
-        
+
         config = AgentConfig.from_markdown(markdown_content)
-        
+
         prompt = config.system_prompt
         assert "You are a specialized agent" in prompt
         assert "**Primary Function**" in prompt
@@ -202,14 +207,14 @@ description: Agent loaded from file
 ---
 
 File-based system prompt."""
-        
-        with NamedTemporaryFile(mode='w', suffix='.md', delete=False) as tmp_file:
+
+        with NamedTemporaryFile(mode="w", suffix=".md", delete=False) as tmp_file:
             tmp_file.write(markdown_content)
             tmp_file.flush()
-            
+
             try:
                 config = AgentConfig.from_file(Path(tmp_file.name))
-                
+
                 assert config.metadata.name == "file-agent"
                 assert config.system_prompt == "File-based system prompt."
             finally:
@@ -218,7 +223,7 @@ File-based system prompt."""
     def test_from_file_nonexistent_path(self):
         """Test from_file method with nonexistent file path."""
         nonexistent_path = Path("/nonexistent/path/agent.md")
-        
+
         with pytest.raises(FileNotFoundError, match="Agent file not found"):
             AgentConfig.from_file(nonexistent_path)
 
@@ -230,14 +235,16 @@ description: Typed agent from file
 ---
 
 Typed system prompt."""
-        
-        with NamedTemporaryFile(mode='w', suffix='.md', delete=False) as tmp_file:
+
+        with NamedTemporaryFile(mode="w", suffix=".md", delete=False) as tmp_file:
             tmp_file.write(markdown_content)
             tmp_file.flush()
-            
+
             try:
-                config = AgentConfig.from_file(Path(tmp_file.name), result_type=MockResult)
-                
+                config = AgentConfig.from_file(
+                    Path(tmp_file.name), result_type=MockResult
+                )
+
                 assert config.result_type == MockResult
                 assert config.metadata.name == "typed-file-agent"
             finally:
@@ -254,9 +261,9 @@ custom_field: some_value
 ---
 
 Complex agent system prompt with multiple sections."""
-        
+
         config = AgentConfig.from_markdown(markdown_content)
-        
+
         assert config.metadata.name == "complex-agent"
         assert config.metadata.version == "1.5"
         assert len(config.tools) == 5
