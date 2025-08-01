@@ -5,7 +5,9 @@ This module provides the primary CLI interface with command routing,
 global options, and support for different interaction modes.
 """
 
+from dataclasses import dataclass
 import os
+from pathlib import Path
 from typing import Optional
 
 import typer
@@ -14,17 +16,25 @@ from rich.table import Table
 from rich.text import Text
 
 from cyro import __version__
+from cyro.agents.manager import ManagerAgent
 from cyro.cli.chat import start_chat_mode, start_chat_mode_with_query
 from cyro.config.themes import (
-    create_theme_manager,
     get_current_theme_name,
     get_theme_color,
     get_theme_info,
     list_themes,
     load_custom_themes,
     set_theme,
+    ThemeManager,
 )
 from cyro.utils.console import console, print_error, print_info, print_success
+
+
+@dataclass
+class AppContext:
+    theme: ThemeManager
+    manager: ManagerAgent
+
 
 # Create the main Typer application
 app = typer.Typer(
@@ -37,11 +47,10 @@ app = typer.Typer(
 
 def _get_color(semantic_name: str, ctx: typer.Context) -> str:
     """Helper to get theme color from context."""
-    theme_manager = ctx.obj
-    if theme_manager is None:
+    if ctx.obj is None or not isinstance(ctx.obj, AppContext):
         # Fallback to global theme manager
         return get_theme_color(semantic_name)
-    return theme_manager.get_color(semantic_name)
+    return ctx.obj.theme.get_color(semantic_name)
 
 
 def version_callback(value: bool):
@@ -86,15 +95,31 @@ def main(
     - cyro print "your query"        # Print response and exit
     - cyro --agent code-reviewer chat "review this code"
     """
-    # Initialize theme manager and store in context
+    # Initialize theme manager and manager agent, store in context
     ctx.ensure_object(dict)
-    ctx.obj = create_theme_manager()
+
+    # Look for agents in project's .cyro directory, fallback to ~/.cyro
+    project_config_dir = Path(".cyro")
+    if project_config_dir.exists():
+        config_dir = project_config_dir
+    else:
+        config_dir = Path("~/.cyro").expanduser()
+
+    ctx.obj = AppContext(
+        theme=ThemeManager(), manager=ManagerAgent(config_dir=config_dir)
+    )
 
 
 def execute_print_mode(
-    query: str, agent: Optional[str], model: Optional[str], verbose: bool
+    query: str,
+    agent: Optional[str],
+    model: Optional[str],
+    verbose: bool,
+    ctx: typer.Context,
 ):
     """Execute a query in print mode and exit."""
+    manager_agent = ctx.obj.manager
+
     if verbose:
         console.print(
             f"[{get_theme_color('text_dim')}]Executing query with agent: {agent or 'auto'}, model: {model or 'default'}[/{get_theme_color('text_dim')}]"
@@ -108,15 +133,31 @@ def execute_print_mode(
     )
     console.print(query_panel)
 
-    # TODO: Implement actual AI agent execution
-    response_panel = Panel(
-        Text(
-            f"🚧 AI execution not yet implemented.\n\nReceived: '{query}'",
-            style=get_theme_color("warning"),
-        ),
-        title=f"[bold {get_theme_color('success')}]Response[/bold {get_theme_color('success')}]",
-        border_style=get_theme_color("success"),
-    )
+    # Process query with AI agent
+    try:
+        if agent:
+            # Use explicitly requested agent
+            selected_agent = manager_agent.get_agent_by_name(agent)
+            response = selected_agent.run_sync(query)
+            response_text = (
+                response.data if hasattr(response, "data") else str(response)
+            )
+        else:
+            # Route through manager
+            response_text = manager_agent.process_request(query)
+
+        response_panel = Panel(
+            Text(response_text, style=get_theme_color("text")),
+            title=f"[bold {get_theme_color('success')}]Response[/bold {get_theme_color('success')}]",
+            border_style=get_theme_color("success"),
+        )
+    except Exception as e:
+        response_panel = Panel(
+            Text(f"Error: {str(e)}", style=get_theme_color("error")),
+            title=f"[bold {get_theme_color('error')}]Error[/bold {get_theme_color('error')}]",
+            border_style=get_theme_color("error"),
+        )
+
     console.print(response_panel)
 
 
@@ -133,13 +174,14 @@ def chat(
 ):
     """Start an interactive chat session."""
     if query:
-        start_chat_mode_with_query(query, agent, verbose, ctx.obj)
+        start_chat_mode_with_query(query, agent, verbose, ctx)
     else:
-        start_chat_mode(agent, verbose, ctx.obj)
+        start_chat_mode(agent, verbose, ctx)
 
 
 @app.command("print")
 def print_cmd(
+    ctx: typer.Context,
     query: str = typer.Argument(..., help="Query to process and print response"),
     agent: Optional[str] = typer.Option(
         None, "--agent", "-a", help="Specify which agent to use"
@@ -152,7 +194,7 @@ def print_cmd(
     ),
 ):
     """Print response to query and exit (non-interactive mode)."""
-    execute_print_mode(query, agent, model, verbose)
+    execute_print_mode(query, agent, model, verbose, ctx)
 
 
 @app.command("agent")
@@ -186,7 +228,7 @@ def config_cmd(
 def handle_theme_config(action: Optional[str], ctx: typer.Context):
     """Handle theme configuration commands."""
 
-    theme_manager = ctx.obj
+    theme_manager = ctx.obj.theme
 
     if action is None or action == "list":
         # Show available themes
@@ -237,7 +279,7 @@ def handle_theme_config(action: Optional[str], ctx: typer.Context):
 def show_theme_list(ctx: typer.Context):
     """Display a formatted list of available themes."""
 
-    theme_manager = ctx.obj
+    theme_manager = ctx.obj.theme
 
     # Load custom themes first
     themes_dir = "~/.cyro/themes"
