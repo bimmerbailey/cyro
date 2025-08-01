@@ -53,7 +53,7 @@ class CyroConfig(BaseSettings):
     # Provider configurations (Ollama-focused)
     host: str = "localhost"
     port: int = 11434
-    model: str = "llama3.2"
+    model: str = "qwen2.5-coder"
     timeout: int = 30
     base_url: AnyHttpUrl = Field(
         default=cast("AnyHttpUrl", "http://localhost:11434/v1")
