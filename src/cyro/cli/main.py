@@ -18,6 +18,7 @@ from rich.text import Text
 from cyro import __version__
 from cyro.agents.manager import ManagerAgent
 from cyro.cli.chat import start_chat_mode, start_chat_mode_with_query
+from cyro.utils.logging import setup_logging
 from cyro.config.themes import (
     get_current_theme_name,
     get_theme_color,
@@ -95,6 +96,11 @@ def main(
     - cyro print "your query"        # Print response and exit
     - cyro --agent code-reviewer chat "review this code"
     """
+    # Configure logging first
+    setup_logging(
+        log_level="DEBUG" if verbose else "INFO",  # Less noise for CLI
+    )
+
     # Initialize theme manager and manager agent, store in context
     ctx.ensure_object(dict)
 
@@ -118,7 +124,7 @@ def execute_print_mode(
     ctx: typer.Context,
 ):
     """Execute a query in print mode and exit."""
-    manager_agent = ctx.obj.manager
+    manager_agent: ManagerAgent = ctx.obj.manager
 
     if verbose:
         console.print(
@@ -139,9 +145,7 @@ def execute_print_mode(
             # Use explicitly requested agent
             selected_agent = manager_agent.get_agent_by_name(agent)
             response = selected_agent.run_sync(query)
-            response_text = (
-                response.data if hasattr(response, "data") else str(response)
-            )
+            response_text = response.output
         else:
             # Route through manager
             response_text = manager_agent.process_request(query)
