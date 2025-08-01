@@ -204,6 +204,9 @@ cython_debug/
 *.local.*
 .claude/agents/
 
+# Application config files
+.cyro/
+
 # Marimo
 marimo/_static/
 marimo/_lsp/

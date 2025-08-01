@@ -7,7 +7,7 @@ metadata structures.
 """
 
 from dataclasses import dataclass
-from typing import Dict, Any, Type
+from typing import Dict, Any, Type, Iterator
 from uuid import uuid4
 from pathlib import Path
 import re
@@ -15,6 +15,8 @@ import re
 from pydantic import BaseModel, Field
 from pydantic.types import UUID4
 from pydantic_ai import Agent
+
+from cyro.config.settings import CyroConfig
 
 
 class AgentMetadata(BaseModel):
@@ -34,13 +36,17 @@ class AgentConfig:
     instructions: str | None = None
     # TODO: come back to this
     tools: Any | None = None
+    result_type: Type[BaseModel] | None = None
 
     @classmethod
-    def from_markdown(cls, content: str | bytes) -> "AgentConfig":
+    def from_markdown(
+        cls, content: str | bytes, result_type: Type[BaseModel] | type = str
+    ) -> "AgentConfig":
         """Create AgentConfig from markdown content.
 
         Args:
             content: Markdown content as string or bytes
+            result_type: Optional result type class that must be a subclass of BaseModel
 
         Returns:
             AgentConfig instance
@@ -90,14 +96,18 @@ class AgentConfig:
             metadata=metadata,
             system_prompt=system_prompt,
             tools=config_data.get("tools"),
+            result_type=result_type,
         )
 
     @classmethod
-    def from_file(cls, file_path: Path) -> "AgentConfig":
+    def from_file(
+        cls, file_path: Path, result_type: Type[BaseModel] | type = str
+    ) -> "AgentConfig":
         """Create AgentConfig from a markdown file.
 
         Args:
             file_path: Path to the markdown file
+            result_type: Optional result type class that must be a subclass of BaseModel
 
         Returns:
             AgentConfig instance
@@ -108,9 +118,9 @@ class AgentConfig:
         """
         if not file_path.exists():
             raise FileNotFoundError(f"Agent file not found: {file_path}")
-        
+
         content = file_path.read_text(encoding="utf-8")
-        return cls.from_markdown(content)
+        return cls.from_markdown(content, result_type)
 
 
 class CyroAgent:
@@ -118,9 +128,10 @@ class CyroAgent:
 
     id: UUID4
     metadata: AgentMetadata
+    config: AgentConfig
     agent: Agent
 
-    def __init__(self, config: AgentConfig, model):
+    def __init__(self, config: AgentConfig, model: Any):
         """Initialize CyroAgent with configuration and model.
 
         Args:
@@ -129,13 +140,21 @@ class CyroAgent:
         """
         self.id = uuid4()
         self.metadata = config.metadata
+        self.config = config
         self.agent = Agent(
-            model, system_prompt=config.system_prompt, instructions=config.instructions
+            model,
+            system_prompt=config.system_prompt,
+            instructions=config.instructions,
+            output_type=config.result_type,
         )
 
-    def run(self, prompt: str, output_type: Type[BaseModel] | None = None):
+    def run_sync(self, prompt: str, output_type: Type[BaseModel] | None = None):
         """Delegate to the underlying PydanticAI Agent."""
         return self.agent.run_sync(user_prompt=prompt, output_type=output_type)
+
+    async def run(self, prompt: str, output_type: Type[BaseModel] | None = None):
+        """Delegate to the underlying PydanticAI Agent."""
+        return await self.agent.run(user_prompt=prompt, output_type=output_type)
 
 
 class AgentRegistry:
@@ -153,7 +172,8 @@ class AgentRegistry:
         Args:
             agent: CyroAgent instance to add
         """
-        self.agents[agent.id] = agent
+        if agent.id not in self.agents:
+            self.agents[agent.id] = agent
 
     def get_by_id(self, agent_id: UUID4) -> CyroAgent:
         """Get agent by UUID4.
@@ -187,3 +207,26 @@ class AgentRegistry:
             if agent.metadata.name.lower() == name.lower():
                 return agent
         raise KeyError(f"Agent with name '{name}' not found in registry")
+
+    def __iter__(self) -> Iterator[CyroAgent]:
+        """Iterate over agents."""
+        return iter(self.agents.values())
+
+
+def make_general_agent(settings: CyroConfig = CyroConfig()) -> CyroAgent:
+    """Make general agent instance."""
+
+    # TODO: All tools available here
+    metadata = AgentMetadata(
+        name="general-engineer",
+        description="General-purpose software engineering agent for coding tasks, "
+        "debugging, refactoring, and technical problem-solving."
+        "Not an expert in any one task but has knowledge of most things.",
+        version="1.0",
+    )
+
+    config = AgentConfig(
+        metadata=metadata,
+        system_prompt="You are a helpful assistant",
+    )
+    return CyroAgent(config, settings.provider)
