@@ -8,6 +8,7 @@ with AI agents, supporting streaming responses and session management.
 import os
 from typing import Optional
 
+import typer
 from rich.panel import Panel
 from rich.text import Text
 
@@ -105,9 +106,11 @@ def _run_chat_loop(
     conversation_history: list,
     current_agent: Optional[str],
     verbose: bool,
-    theme_manager=None,
+    ctx: typer.Context,
 ):
     """Run the main chat interaction loop."""
+    theme_manager = ctx.obj.theme
+
     try:
         while True:
             try:
@@ -127,7 +130,7 @@ def _run_chat_loop(
                         conversation_history,
                         current_agent,
                         verbose,
-                        theme_manager,
+                        ctx,
                     )
 
                     if command_result == "exit":
@@ -155,7 +158,7 @@ def _run_chat_loop(
                     conversation_history,
                     current_agent,
                     verbose,
-                    theme_manager,
+                    ctx,
                 )
 
                 # Add AI response to history
@@ -177,16 +180,19 @@ def _run_chat_loop(
 
 
 def start_chat_mode(
-    agent: Optional[str] = None, verbose: bool = False, theme_manager=None
+    agent: Optional[str] = None,
+    verbose: bool = False,
+    ctx: typer.Context = None,  # type: ignore
 ):
     """Start the interactive chat mode."""
+    theme_manager = ctx.obj.theme
     _show_welcome_panels(theme_manager)
 
     # Chat session state
     conversation_history = []
     current_agent = agent
 
-    _run_chat_loop(conversation_history, current_agent, verbose, theme_manager)
+    _run_chat_loop(conversation_history, current_agent, verbose, ctx)
 
     print_success("Chat session ended.")
 
@@ -195,9 +201,10 @@ def start_chat_mode_with_query(
     initial_query: str,
     agent: Optional[str] = None,
     verbose: bool = False,
-    theme_manager=None,
+    ctx: typer.Context = None,  # type: ignore
 ):
     """Start chat mode with an initial query."""
+    theme_manager = ctx.obj.theme
     _show_welcome_panels(theme_manager)
 
     # Chat session state
@@ -214,7 +221,7 @@ def start_chat_mode_with_query(
 
         # Process initial message with AI agent
         response = process_chat_message(
-            initial_query, conversation_history, current_agent, verbose, theme_manager
+            initial_query, conversation_history, current_agent, verbose, ctx
         )
 
         # Add AI response to history
@@ -224,7 +231,7 @@ def start_chat_mode_with_query(
         console.print(_create_ai_panel(response, current_agent, theme_manager))
 
         # Continue with normal chat loop
-        _run_chat_loop(conversation_history, current_agent, verbose, theme_manager)
+        _run_chat_loop(conversation_history, current_agent, verbose, ctx)
 
     except (EOFError, KeyboardInterrupt):
         console.print(
@@ -239,9 +246,10 @@ def handle_chat_command(
     history: list,
     current_agent: Optional[str],
     verbose: bool,
-    theme_manager=None,
+    ctx: typer.Context,
 ) -> str:
     """Handle special chat commands."""
+    theme_manager = ctx.obj.theme
     cmd_parts = command[1:].split()  # Remove leading '/'
 
     if not cmd_parts:
@@ -461,13 +469,25 @@ def handle_chat_theme_config(action: str, theme_manager):
 
 
 def process_chat_message(
-    message: str, history: list, agent: Optional[str], verbose: bool, theme_manager=None
+    message: str, history: list, agent: Optional[str], verbose: bool, ctx: typer.Context
 ) -> str:
     """Process a chat message through the AI agent."""
+    manager_agent = ctx.obj.manager
+    theme_manager = ctx.obj.theme
+
     if verbose:
         console.print(
             f"[{_get_themed_color('text_dim', theme_manager)}]Processing message with agent: {agent or 'auto'}[/{_get_themed_color('text_dim', theme_manager)}]"
         )
 
-    # TODO: Implement actual AI agent processing
-    return f"🚧 AI processing not yet implemented.\n\nReceived: '{message}'"
+    try:
+        if agent:
+            # Use explicitly requested agent
+            selected_agent = manager_agent.get_agent_by_name(agent)
+            response = selected_agent.run_sync(message)
+            return response.data if hasattr(response, "data") else str(response)
+        else:
+            # Route through manager
+            return manager_agent.process_request(message)
+    except Exception as e:
+        return f"Error: {str(e)}"

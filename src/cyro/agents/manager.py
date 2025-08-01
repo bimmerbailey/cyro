@@ -82,6 +82,12 @@ class ManagerAgent(CyroAgent):
         self.registry = AgentRegistry()
         self.load_agents_from_directory(config=config)
 
+        # Debug: Show loaded agents with names
+        agent_names = [agent.metadata.name for agent in self.registry]
+        print(
+            f"📁 Loaded {len(agent_names)} agents from {self.config_dir}: {agent_names}"
+        )
+
         metadata = AgentMetadata(
             name="manager",
             description="Responsible for delegating tasks to subagents",
@@ -321,6 +327,53 @@ Respond with exactly this JSON structure:
                 print(f"Warning: Failed to load agent from {agent_file}: {e}")
                 continue
 
-        # NOTE: Only add general-engineer if it doesn't exist
-        if not self.get_agent_by_name("general-engineer"):
+        # TODO: Clean this up
+        # NOTE: Only add fallback general-engineer if no general-purpose agent exists
+        has_general_agent = False
+        # Check for common general-purpose agent names
+        for agent_name in ["general-engineer", "engineer", "software-engineer"]:
+            try:
+                self.get_agent_by_name(agent_name)
+                has_general_agent = True
+                break
+            except KeyError:
+                continue
+
+        # Only add fallback if no general-purpose agent was found
+        if not has_general_agent:
             self.add_general_agent(config=config)
+
+    def process_request(self, message: str) -> str:
+        """Process user request by selecting appropriate agent and returning response.
+
+        Args:
+            message: User's request/query
+
+        Returns:
+            Agent's response as string
+        """
+
+        # Route through manager to select best agent
+        try:
+            result = self.run_sync(message)
+
+        except Exception as routing_error:
+            # Fallback: Route to general-engineer when AI routing fails
+            print(
+                f"⚠️  AI routing failed ({routing_error}), falling back to general-engineer"
+            )
+            agent = self.get_agent_by_name("general-engineer")
+
+        else:
+            selection: AgentSelection = result.output  # type: ignore
+
+            # Print routing information
+            print(f"🤖 Manager routing message to: {selection.recommended_agent}")
+            print(f"📝 Reasoning: {selection.reasoning}")
+
+            # Get the selected agent and execute
+            agent = self.get_agent_by_id(selection.agent_id)
+
+        print(f"Agent: {agent.id}, name: {agent.metadata.name}")
+        response = agent.run_sync(message)
+        return str(response.data)
