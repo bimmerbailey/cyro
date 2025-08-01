@@ -6,11 +6,11 @@ the base CyroAgent class that extends PydanticAI Agent and core
 metadata structures.
 """
 
-from dataclasses import dataclass
-from typing import Dict, Any, Type, Iterator
-from uuid import uuid4
-from pathlib import Path
 import re
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Dict, Iterator, Type
+from uuid import uuid4
 
 from pydantic import BaseModel, Field
 from pydantic.types import UUID4
@@ -145,7 +145,7 @@ class CyroAgent:
             model,
             system_prompt=config.system_prompt,
             instructions=config.instructions,
-            output_type=config.result_type,
+            output_type=config.result_type or str,  # type: ignore
         )
 
     def run_sync(self, prompt: str, output_type: Type[BaseModel] | None = None):
