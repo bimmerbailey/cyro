@@ -15,6 +15,7 @@ import re
 from pydantic import BaseModel, Field
 from pydantic.types import UUID4
 from pydantic_ai import Agent
+from pydantic_ai.agent import AgentRunResult
 
 from cyro.config.settings import CyroConfig
 
@@ -153,13 +154,13 @@ class CyroAgent:
 
         self.agent = Agent(**agent_kwargs)
 
-    def run_sync(self, prompt: str, output_type: Type[BaseModel] | None = None):
+    def run_sync(self, prompt: str) -> AgentRunResult:
         """Delegate to the underlying PydanticAI Agent."""
-        return self.agent.run_sync(user_prompt=prompt, output_type=output_type)
+        return self.agent.run_sync(user_prompt=prompt)
 
-    async def run(self, prompt: str, output_type: Type[BaseModel] | None = None):
+    async def run(self, prompt: str) -> AgentRunResult:
         """Delegate to the underlying PydanticAI Agent."""
-        return await self.agent.run(user_prompt=prompt, output_type=output_type)
+        return await self.agent.run(user_prompt=prompt)
 
 
 class AgentRegistry:

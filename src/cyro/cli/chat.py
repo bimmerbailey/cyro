@@ -12,6 +12,7 @@ import typer
 from rich.panel import Panel
 from rich.text import Text
 
+from cyro.agents.manager import ManagerAgent
 from cyro.config.themes import (
     get_current_theme_name,
     get_theme_color,
@@ -19,6 +20,7 @@ from cyro.config.themes import (
     list_themes,
     load_custom_themes,
     set_theme,
+    ThemeManager,
 )
 from cyro.utils.console import (
     console,
@@ -472,8 +474,8 @@ def process_chat_message(
     message: str, history: list, agent: Optional[str], verbose: bool, ctx: typer.Context
 ) -> str:
     """Process a chat message through the AI agent."""
-    manager_agent = ctx.obj.manager
-    theme_manager = ctx.obj.theme
+    manager_agent: ManagerAgent = ctx.obj.manager
+    theme_manager: ThemeManager = ctx.obj.theme
 
     if verbose:
         console.print(
@@ -485,7 +487,7 @@ def process_chat_message(
             # Use explicitly requested agent
             selected_agent = manager_agent.get_agent_by_name(agent)
             response = selected_agent.run_sync(message)
-            return response.data if hasattr(response, "data") else str(response)
+            return response.output
         else:
             # Route through manager
             return manager_agent.process_request(message)
