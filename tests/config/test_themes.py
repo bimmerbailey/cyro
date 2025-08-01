@@ -12,8 +12,6 @@ This module tests the theme management functionality including:
 import pytest
 from pathlib import Path
 import tempfile
-import tomllib
-from typing import Dict, Any
 
 from cyro.config.themes import (
     ColorScheme,

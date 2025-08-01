@@ -7,7 +7,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from pydantic import BaseModel
 
-from cyro.agents.base import AgentConfig, AgentMetadata
+from cyro.agents.base import AgentConfig
 
 
 class MockResult(BaseModel):
