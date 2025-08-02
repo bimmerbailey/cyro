@@ -11,6 +11,7 @@ from typing import Dict, Any, Type, Iterator
 from uuid import uuid4
 from pathlib import Path
 import re
+import yaml
 
 from pydantic import BaseModel, Field
 from pydantic.types import UUID4
@@ -38,6 +39,8 @@ class AgentConfig:
     # TODO: come back to this
     tools: Any | None = None
     result_type: Type[BaseModel] | None = None
+    color: str | None = None
+    model: str | None = None
 
     @classmethod
     def from_markdown(
@@ -66,19 +69,22 @@ class AgentConfig:
         frontmatter_text, system_prompt = frontmatter_match.groups()
         system_prompt = system_prompt.strip()
 
-        # Parse frontmatter fields
-        config_data = {}
-        for line in frontmatter_text.strip().split("\n"):
-            if ":" in line:
-                key, value = line.split(":", 1)
-                key = key.strip()
-                value = value.strip()
+        # Parse frontmatter using PyYAML
+        try:
+            config_data = yaml.safe_load(frontmatter_text.strip()) or {}
+        except yaml.YAMLError as e:
+            raise ValueError(f"Invalid YAML frontmatter: {e}") from e
 
-                if key == "tools" and value:
-                    # Parse comma-separated tools list
-                    config_data[key] = [tool.strip() for tool in value.split(",")]
-                else:
-                    config_data[key] = value
+        # Handle tools field - ensure it's a list if present
+        tools = config_data.get("tools")
+        if tools is not None:
+            if isinstance(tools, str):
+                # Handle comma-separated string for backward compatibility
+                tools = [tool.strip() for tool in tools.split(",") if tool.strip()]
+            elif not isinstance(tools, list):
+                # Convert other types to string representation in a list
+                tools = [str(tools)]
+            config_data["tools"] = tools
 
         # Validate required fields
         if "name" not in config_data:
@@ -90,14 +96,16 @@ class AgentConfig:
         metadata = AgentMetadata(
             name=config_data["name"],
             description=config_data["description"],
-            version=config_data.get("version", "1.0"),
+            version=str(config_data.get("version", "1.0")),
         )
 
         return cls(
             metadata=metadata,
             system_prompt=system_prompt,
-            tools=config_data.get("tools"),
+            tools=tools,
             result_type=result_type,
+            color=config_data.get("color"),
+            model=config_data.get("model"),
         )
 
     @classmethod

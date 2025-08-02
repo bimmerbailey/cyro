@@ -109,8 +109,8 @@ tools:
 System prompt."""
 
         config = AgentConfig.from_markdown(markdown_content)
-        # Empty tools field becomes empty string (not parsed as list)
-        assert config.tools == ""
+        # Empty tools field becomes None with proper YAML parsing
+        assert config.tools is None
 
     def test_single_tool_parsing(self):
         """Test parsing single tool (no commas)."""
@@ -269,3 +269,150 @@ Complex agent system prompt with multiple sections."""
         assert len(config.tools) == 5
         assert "filesystem" in config.tools
         assert "search" in config.tools
+
+    def test_yaml_multiline_values(self):
+        """Test YAML frontmatter with multiline values."""
+        markdown_content = """---
+name: multiline-yaml-agent
+description: >
+  This is a multiline description
+  that spans multiple lines
+  and should be properly parsed
+tools:
+  - filesystem
+  - git
+  - web
+custom_config:
+  key1: value1
+  key2: "value with: colon"
+---
+
+System prompt content."""
+
+        config = AgentConfig.from_markdown(markdown_content)
+        
+        assert config.metadata.name == "multiline-yaml-agent"
+        assert "multiline description" in config.metadata.description
+        assert config.tools == ["filesystem", "git", "web"]
+
+    def test_yaml_quoted_strings_with_colons(self):
+        """Test YAML frontmatter with quoted strings containing colons."""
+        markdown_content = """---
+name: quoted-agent
+description: "Agent with: colons in description"
+tools: "filesystem, git: advanced"
+---
+
+System prompt."""
+
+        config = AgentConfig.from_markdown(markdown_content)
+        
+        assert config.metadata.description == "Agent with: colons in description"
+        assert config.tools == ["filesystem", "git: advanced"]
+
+    def test_yaml_arrays_and_objects(self):
+        """Test YAML frontmatter with arrays and nested objects."""
+        markdown_content = """---
+name: complex-yaml-agent
+description: Agent with complex YAML
+tools:
+  - filesystem
+  - git
+  - web
+metadata:
+  tags: [ai, coding, automation]
+  settings:
+    timeout: 30
+    retries: 3
+---
+
+System prompt."""
+
+        config = AgentConfig.from_markdown(markdown_content)
+        
+        assert config.tools == ["filesystem", "git", "web"]
+        assert config.metadata.name == "complex-yaml-agent"
+
+    def test_invalid_yaml_frontmatter(self):
+        """Test error handling for malformed YAML."""
+        markdown_content = """---
+name: invalid-yaml-agent
+description: Agent with invalid YAML
+tools: [unclosed list
+invalid_syntax: }
+---
+
+System prompt."""
+
+        with pytest.raises(ValueError, match="Invalid YAML frontmatter"):
+            AgentConfig.from_markdown(markdown_content)
+
+    def test_yaml_comments_and_special_chars(self):
+        """Test YAML with comments and special characters."""
+        markdown_content = """---
+# This is a comment
+name: special-char-agent  # Agent with special chars
+description: "Agent with émojis 🤖 and special chars: @#$%"
+tools:
+  - filesystem  # File operations
+  - git        # Version control
+version: "2.0"  # Updated version
+---
+
+System prompt with special chars: 你好世界"""
+
+        config = AgentConfig.from_markdown(markdown_content)
+        
+        assert config.metadata.name == "special-char-agent"
+        assert "émojis 🤖" in config.metadata.description
+        assert config.tools == ["filesystem", "git"]
+        assert config.metadata.version == "2.0"
+
+    def test_yaml_backward_compatibility_string_tools(self):
+        """Test backward compatibility with comma-separated string tools."""
+        markdown_content = """---
+name: compat-agent
+description: Agent testing backward compatibility
+tools: filesystem, git, web, execution
+---
+
+System prompt."""
+
+        config = AgentConfig.from_markdown(markdown_content)
+        
+        assert config.tools == ["filesystem", "git", "web", "execution"]
+        assert config.metadata.name == "compat-agent"
+
+    def test_optional_color_and_model_fields(self):
+        """Test parsing optional color and model fields."""
+        markdown_content = """---
+name: colored-agent
+description: Agent with color and model specified
+color: blue
+model: gpt-4
+tools: [filesystem, git]
+---
+
+System prompt with color and model."""
+
+        config = AgentConfig.from_markdown(markdown_content)
+        
+        assert config.color == "blue"
+        assert config.model == "gpt-4"
+        assert config.metadata.name == "colored-agent"
+        assert config.tools == ["filesystem", "git"]
+
+    def test_optional_fields_defaults_to_none(self):
+        """Test that optional fields default to None when not specified."""
+        markdown_content = """---
+name: default-agent
+description: Agent without optional fields
+---
+
+Basic system prompt."""
+
+        config = AgentConfig.from_markdown(markdown_content)
+        
+        assert config.color is None
+        assert config.model is None
+        assert config.metadata.name == "default-agent"
