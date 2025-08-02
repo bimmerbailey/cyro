@@ -9,6 +9,11 @@ dependencies = [
     "rich>=14.1.0",
     "typer>=0.16.0",
     "toml>=0.10.2",
+    "pydantic-settings>=2.10.1",
+    "langchain-community>=0.3.27",
+    "langchain-core>=0.3.72",
+    "structlog>=25.4.0",
+    "pyyaml>=6.0.1",
 ]
 
 [project.scripts]

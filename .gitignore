@@ -202,7 +202,10 @@ cython_debug/
 .cursorindexingignore
 
 *.local.*
-agents/
+.claude/agents/
+
+# Application config files
+.cyro/
 
 # Marimo
 marimo/_static/
