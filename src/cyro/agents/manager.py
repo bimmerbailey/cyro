@@ -7,17 +7,20 @@ for all subagents, handling task routing, agent selection, and delegation.
 
 from pathlib import Path
 
+import structlog.stdlib
 from pydantic import BaseModel, Field
 from pydantic.types import UUID4
 
 from cyro.agents.base import (
-    CyroAgent,
-    AgentRegistry,
     AgentConfig,
     AgentMetadata,
+    AgentRegistry,
+    CyroAgent,
     make_general_agent,
 )
 from cyro.config.settings import CyroConfig
+
+logger = structlog.stdlib.get_logger(__name__)
 
 
 class AgentSelection(BaseModel):
@@ -31,7 +34,8 @@ class AgentSelection(BaseModel):
 
 
 system_prompt = """
-You are a Manager Agent responsible for analyzing user requests and routing them to the most appropriate specialized agent. Your sole responsibility is intelligent request routing and delegation.
+You are a Manager Agent responsible for analyzing user requests and routing them to the most appropriate specialized agent. 
+Your sole responsibility is intelligent request routing and delegation.
 
 ## Core Function
 - Analyze incoming user requests to understand intent, domain, and complexity
@@ -60,7 +64,6 @@ Follow the detailed instructions provided to make optimal routing decisions.
 """
 
 
-# TODO: Delegation method
 class ManagerAgent(CyroAgent):
     """Central manager for routing tasks to appropriate subagents."""
 
@@ -81,6 +84,15 @@ class ManagerAgent(CyroAgent):
         self.config_dir = config_dir
         self.registry = AgentRegistry()
         self.load_agents_from_directory(config=config)
+
+        # Log loaded agents
+        agent_names = [agent.metadata.name for agent in self.registry]
+        logger.info(
+            "Manager initialized",
+            config_dir=str(self.config_dir),
+            agent_count=len(agent_names),
+            agents=agent_names,
+        )
 
         metadata = AgentMetadata(
             name="manager",
@@ -107,53 +119,9 @@ class ManagerAgent(CyroAgent):
         Returns:
             Formatted instructions string with detailed agent capabilities and selection guidance
         """
-        instructions = """## Agent Selection Instructions
-
-You are a routing specialist. Your job is to analyze user requests and select the single best agent to handle them. Follow this systematic approach:
-
-### Step 1: Request Analysis
-
-**Parse the user's request for these key elements:**
-
-1. **Primary Action Verb**: What is the user trying to do?
-   - CREATE: build, make, implement, develop, generate
-   - DEBUG: fix, resolve, troubleshoot, diagnose, investigate  
-   - REVIEW: analyze, audit, check, validate, evaluate
-   - MODIFY: update, refactor, optimize, enhance, change
-   - DEPLOY: launch, publish, release, configure, setup
-   - LEARN: explain, understand, document, research
-
-2. **Technical Domain**: What area of expertise is involved?
-   - Frontend: React, Vue, Angular, HTML/CSS, UI/UX
-   - Backend: APIs, databases, servers, microservices
-   - Data: analysis, processing, ML, visualization, ETL
-   - DevOps: CI/CD, infrastructure, containers, cloud
-   - Mobile: iOS, Android, React Native, Flutter
-   - Security: authentication, encryption, penetration testing
-   - Testing: unit tests, integration, e2e, performance
-
-3. **Scope & Complexity**: How extensive is the work?
-   - SIMPLE: Single file, quick fix, straightforward task
-   - MODERATE: Multiple files, requires planning, some complexity
-   - COMPLEX: Architecture changes, multi-system integration
-
-4. **Context Clues**: Additional indicators from the request
-   - File types mentioned (.py, .js, .dockerfile, etc.)
-   - Technologies named (React, PostgreSQL, AWS, etc.)
-   - Specific tools referenced (Jest, Docker, Kubernetes, etc.)
-
-### Step 2: Agent Capability Matching
-
-**Score each available agent (0-10) based on:**
-
-- **Domain Expertise** (0-4): Does the agent specialize in this technical area?
-- **Tool Availability** (0-3): Does the agent have the right tools for the job?
-- **Scope Match** (0-3): Can the agent handle the complexity and scope?
-
-**Selection Logic:**
-- Score ≥ 8: Strong match - select this specialized agent
-- Score 6-7: Good match - prefer over generalist if clearly better
-- Score ≤ 5: Weak match - consider Software Engineer instead
+        instructions = """
+You are the manager of this system. You are responsible for delegating tasks to subagents.
+You should not do the task asked by the user        
 
 ### Available Agents
 
@@ -161,6 +129,7 @@ You are a routing specialist. Your job is to analyze user requests and select th
 
         # Add registered specialized agents with enhanced information
         for agent in self.registry:
+            # TODO: Do we need ID?
             instructions += f"**{agent.metadata.name}** (ID: {agent.id})\n"
             instructions += f"- **Description**: {agent.metadata.description}\n"
             instructions += f"- **Version**: {agent.metadata.version}\n"
@@ -175,58 +144,9 @@ You are a routing specialist. Your job is to analyze user requests and select th
                 instructions += f"- **Available Tools**: {', '.join(tools_list)}\n"
 
             instructions += "\n"
-
-        instructions += """### Decision Matrix Examples
-
-**Request**: "Fix the login bug in our React app"
-- Action: DEBUG, Domain: Frontend, Complexity: MODERATE
-- Frontend Specialist (if available): Score 9/10 → SELECT
-- Software Engineer: Score 7/10 → Use if no specialist
-
-**Request**: "Analyze customer data trends from this CSV"
-- Action: LEARN, Domain: Data, Complexity: MODERATE  
-- Data Analyst (if available): Score 10/10 → SELECT
-- Software Engineer: Score 5/10 → Only if no data specialist
-
-**Request**: "Implement user authentication system"
-- Action: CREATE, Domain: Backend/Security, Complexity: COMPLEX
-- Security Engineer (if available): Score 9/10 → SELECT
-- Backend Engineer (if available): Score 8/10 → SELECT  
-- Software Engineer: Score 7/10 → Use if no specialists
-
-**Request**: "Refactor this Python function for better performance"
-- Action: MODIFY, Domain: Backend, Complexity: SIMPLE
-- Software Engineer: Score 8/10 → SELECT (general optimization task)
-
-### Critical Decision Rules
-
-1. **Specialized > Generalist**: When a specialist scores ≥ 8, choose them over Software Engineer
-2. **Complexity Matching**: Ensure selected agent can handle the scope (Simple/Moderate/Complex)
-3. **Tool Requirements**: Verify the agent has necessary tools (filesystem, git, web, etc.)
-4. **Domain Alignment**: Strong domain match trumps secondary considerations
-5. **Default Fallback**: When in doubt or scores are close (≤ 1 point difference), choose Software Engineer
-
-### Response Format
-
-Respond with exactly this JSON structure:
-
-```json
-{
-    "recommended_agent": "exact_agent_name_from_above_list",
-    "agent_id": "uuid4_from_agent_listing_or_default_for_software_engineer", 
-    "reasoning": "Based on [ACTION] request in [DOMAIN] domain with [COMPLEXITY] scope, selected [AGENT] because [SPECIFIC_CAPABILITY_MATCH]. Score: X/10."
-}
-```
-
-**Example responses:**
-
-```json
-{
-    "recommended_agent": "Software Engineer",
-    "agent_id": "default",
-    "reasoning": "Based on CREATE request in Backend domain with COMPLEX scope, selected Software Engineer because no specialized backend agent available and requires full-stack capabilities. Score: 7/10."
-}
-```
+        instructions += """
+## Response Requirements
+You must respond with a structured JSON object matching the AgentSelection schema:
 
 ```json
 {
@@ -235,16 +155,7 @@ Respond with exactly this JSON structure:
     "reasoning": "Based on REVIEW request in Quality domain with MODERATE scope, selected Code Reviewer because specialized in code analysis and quality assurance. Score: 9/10."
 }
 ```
-
-### Final Reminders
-
-- **Be Decisive**: Never ask clarifying questions - make the best decision with available information
-- **Score Systematically**: Use the 0-10 scoring system to justify selections
-- **Prefer Specialists**: When domain expertise clearly applies (score ≥ 8)  
-- **Trust the Default**: Software Engineer handles anything specialists can't
-- **Match Complexity**: Ensure selected agent can handle the request scope
 """
-
         return instructions
 
     def add_agent(self, agent: CyroAgent) -> None:
@@ -318,9 +229,54 @@ Respond with exactly this JSON structure:
 
             except Exception as e:
                 # Log error but continue loading other agents
-                print(f"Warning: Failed to load agent from {agent_file}: {e}")
+                logger.warning(
+                    "Failed to load agent", agent_file=agent_file, error=str(e)
+                )
                 continue
 
-        # NOTE: Only add general-engineer if it doesn't exist
-        if not self.get_agent_by_name("general-engineer"):
+        # NOTE: Only add fallback general-engineer if no general-purpose agent exists
+        try:
+            default_agent = "general-engineer"
+            self.get_agent_by_name(default_agent)
+        except KeyError:
             self.add_general_agent(config=config)
+
+    def process_request(self, message: str) -> str:
+        """Process user request by selecting the appropriate agent and returning response.
+
+        Args:
+            message: User's request/query
+
+        Returns:
+            Agent's response as string
+        """
+
+        # TODO: cache the agent to reuse on the following requests?
+        logger.info("Manager agent request", message=message)
+        if len(self.registry.agents) > 1:
+            # Route through manager to select the best agent
+            try:
+                result = self.run_sync(message)
+            except Exception as routing_error:
+                # Fallback: Route to general-engineer when AI routing fails
+                logger.warning("⚠️  AI routing failed", error=str(routing_error))
+                agent = self.get_agent_by_name("general-engineer")
+            else:
+                selection: AgentSelection = result.output  # type: ignore
+
+                # Print routing information
+                logger.info(
+                    "🤖 Manager routing message",
+                    agent=selection.recommended_agent,
+                    reasoning=selection.reasoning,
+                )
+
+                agent = self.get_agent_by_id(selection.agent_id)
+        else:
+            logger.info("Using the only subagent")
+            # NOTE: No need to go through manager if we only have one subagent
+            agent = self.get_agent_by_name("general-engineer")
+
+        logger.info("Sending agent request", agent=agent.metadata.name)
+        response = agent.run_sync(message)
+        return str(response.output)

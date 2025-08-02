@@ -10,11 +10,16 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterator, Type
+from typing import Dict, Any, Type, Iterator
 from uuid import uuid4
+from pathlib import Path
+import re
+import yaml
 
 from pydantic import BaseModel, Field
 from pydantic.types import UUID4
 from pydantic_ai import Agent
+from pydantic_ai.agent import AgentRunResult
 
 from cyro.config.settings import CyroConfig
 
@@ -37,6 +42,8 @@ class AgentConfig:
     # TODO: come back to this
     tools: Any | None = None
     result_type: Type[BaseModel] | None = None
+    color: str | None = None
+    model: str | None = None
 
     @classmethod
     def from_markdown(
@@ -65,19 +72,22 @@ class AgentConfig:
         frontmatter_text, system_prompt = frontmatter_match.groups()
         system_prompt = system_prompt.strip()
 
-        # Parse frontmatter fields
-        config_data = {}
-        for line in frontmatter_text.strip().split("\n"):
-            if ":" in line:
-                key, value = line.split(":", 1)
-                key = key.strip()
-                value = value.strip()
+        # Parse frontmatter using PyYAML
+        try:
+            config_data = yaml.safe_load(frontmatter_text.strip()) or {}
+        except yaml.YAMLError as e:
+            raise ValueError(f"Invalid YAML frontmatter: {e}") from e
 
-                if key == "tools" and value:
-                    # Parse comma-separated tools list
-                    config_data[key] = [tool.strip() for tool in value.split(",")]
-                else:
-                    config_data[key] = value
+        # Handle tools field - ensure it's a list if present
+        tools = config_data.get("tools")
+        if tools is not None:
+            if isinstance(tools, str):
+                # Handle comma-separated string for backward compatibility
+                tools = [tool.strip() for tool in tools.split(",") if tool.strip()]
+            elif not isinstance(tools, list):
+                # Convert other types to string representation in a list
+                tools = [str(tools)]
+            config_data["tools"] = tools
 
         # Validate required fields
         if "name" not in config_data:
@@ -89,14 +99,16 @@ class AgentConfig:
         metadata = AgentMetadata(
             name=config_data["name"],
             description=config_data["description"],
-            version=config_data.get("version", "1.0"),
+            version=str(config_data.get("version", "1.0")),
         )
 
         return cls(
             metadata=metadata,
             system_prompt=system_prompt,
-            tools=config_data.get("tools"),
+            tools=tools,
             result_type=result_type,
+            color=config_data.get("color"),
+            model=config_data.get("model"),
         )
 
     @classmethod
@@ -141,20 +153,25 @@ class CyroAgent:
         self.id = uuid4()
         self.metadata = config.metadata
         self.config = config
-        self.agent = Agent(
-            model,
-            system_prompt=config.system_prompt,
-            instructions=config.instructions,
-            output_type=config.result_type or str,  # type: ignore
-        )
 
-    def run_sync(self, prompt: str, output_type: Type[BaseModel] | None = None):
-        """Delegate to the underlying PydanticAI Agent."""
-        return self.agent.run_sync(user_prompt=prompt, output_type=output_type)
+        # Build agent kwargs, only include output_type if result_type is not None
+        agent_kwargs = {
+            "model": model,
+            "system_prompt": config.system_prompt,
+            "instructions": config.instructions,
+        }
+        if config.result_type is not None:
+            agent_kwargs["output_type"] = config.result_type
 
-    async def run(self, prompt: str, output_type: Type[BaseModel] | None = None):
+        self.agent = Agent(**agent_kwargs)
+
+    def run_sync(self, prompt: str) -> AgentRunResult:
         """Delegate to the underlying PydanticAI Agent."""
-        return await self.agent.run(user_prompt=prompt, output_type=output_type)
+        return self.agent.run_sync(user_prompt=prompt)
+
+    async def run(self, prompt: str) -> AgentRunResult:
+        """Delegate to the underlying PydanticAI Agent."""
+        return await self.agent.run(user_prompt=prompt)
 
 
 class AgentRegistry:

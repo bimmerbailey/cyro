@@ -12,18 +12,10 @@ from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_settings import (
     BaseSettings,
-    SettingsConfigDict,
     PydanticBaseSettingsSource,
+    SettingsConfigDict,
     TomlConfigSettingsSource,
 )
-
-
-class AgentConfig(BaseModel):
-    """Configuration for agent system."""
-
-    discovery_path: str = "~/.cyro/agents"
-    auto_load: bool = True
-    default_tools: List[str] = ["filesystem", "web"]
 
 
 class SecurityConfig(BaseModel):
@@ -53,14 +45,11 @@ class CyroConfig(BaseSettings):
     # Provider configurations (Ollama-focused)
     host: str = "localhost"
     port: int = 11434
-    model: str = "llama3.2"
+    model: str = "qwen2.5-coder"
     timeout: int = 30
     base_url: AnyHttpUrl = Field(
         default=cast("AnyHttpUrl", "http://localhost:11434/v1")
     )
-
-    # Agent configuration
-    agents: AgentConfig = AgentConfig()
 
     # Security configuration
     security: SecurityConfig = SecurityConfig()
