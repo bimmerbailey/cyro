@@ -64,7 +64,6 @@ Follow the detailed instructions provided to make optimal routing decisions.
 """
 
 
-# TODO: Delegation method
 class ManagerAgent(CyroAgent):
     """Central manager for routing tasks to appropriate subagents."""
 
@@ -278,6 +277,6 @@ You must respond with a structured JSON object matching the AgentSelection schem
             # NOTE: No need to go through manager if we only have one subagent
             agent = self.get_agent_by_name("general-engineer")
 
-        logger.info("Sending agent request", agent=agent.id)
+        logger.info("Sending agent request", agent=agent.metadata.name)
         response = agent.run_sync(message)
         return str(response.output)

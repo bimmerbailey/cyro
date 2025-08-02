@@ -18,14 +18,6 @@ from pydantic_settings import (
 )
 
 
-class SystemAgentConfig(BaseModel):
-    """Configuration for agent system."""
-
-    discovery_path: str = "~/.cyro/agents"
-    auto_load: bool = True
-    default_tools: List[str] = ["filesystem", "web"]
-
-
 class SecurityConfig(BaseModel):
     """Security and safety configuration."""
 
@@ -58,9 +50,6 @@ class CyroConfig(BaseSettings):
     base_url: AnyHttpUrl = Field(
         default=cast("AnyHttpUrl", "http://localhost:11434/v1")
     )
-
-    # Agent configuration
-    agents: SystemAgentConfig = SystemAgentConfig()
 
     # Security configuration
     security: SecurityConfig = SecurityConfig()
