@@ -18,7 +18,7 @@ from pydantic_settings import (
 )
 
 
-class AgentConfig(BaseModel):
+class SystemAgentConfig(BaseModel):
     """Configuration for agent system."""
 
     discovery_path: str = "~/.cyro/agents"
@@ -60,7 +60,7 @@ class CyroConfig(BaseSettings):
     )
 
     # Agent configuration
-    agents: AgentConfig = AgentConfig()
+    agents: SystemAgentConfig = SystemAgentConfig()
 
     # Security configuration
     security: SecurityConfig = SecurityConfig()

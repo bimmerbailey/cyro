@@ -7,8 +7,6 @@ global options, and support for different interaction modes.
 
 from dataclasses import dataclass
 import os
-from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.panel import Panel
@@ -18,6 +16,11 @@ from rich.text import Text
 from cyro import __version__
 from cyro.agents.manager import ManagerAgent
 from cyro.cli.chat import start_chat_mode, start_chat_mode_with_query
+from cyro.cli.shared import (
+    get_config_directory,
+    get_themes_directory,
+    process_agent_request,
+)
 from cyro.utils.logging import setup_logging
 from cyro.config.themes import (
     get_current_theme_name,
@@ -66,19 +69,19 @@ def version_callback(value: bool):
 @app.callback()
 def main(
     ctx: typer.Context,
-    agent: Optional[str] = typer.Option(
+    agent: str | None = typer.Option(
         None, "--agent", "-a", help="Specify which agent to use"
     ),
-    model: Optional[str] = typer.Option(
+    model: str | None = typer.Option(
         None, "--model", "-m", help="Specify which model to use"
     ),
     verbose: bool = typer.Option(
         False, "--verbose", "-v", help="Enable verbose output"
     ),
-    config: Optional[str] = typer.Option(
+    config: str | None = typer.Option(
         None, "--config", "-c", help="Path to configuration file"
     ),
-    version: Optional[bool] = typer.Option(
+    version: bool | None = typer.Option(
         None,
         "--version",
         callback=version_callback,
@@ -105,11 +108,7 @@ def main(
     ctx.ensure_object(dict)
 
     # Look for agents in project's .cyro directory, fallback to ~/.cyro
-    project_config_dir = Path(".cyro")
-    if project_config_dir.exists():
-        config_dir = project_config_dir
-    else:
-        config_dir = Path("~/.cyro").expanduser()
+    config_dir = get_config_directory()
 
     ctx.obj = AppContext(
         theme=ThemeManager(), manager=ManagerAgent(config_dir=config_dir)
@@ -118,8 +117,8 @@ def main(
 
 def execute_print_mode(
     query: str,
-    agent: Optional[str],
-    model: Optional[str],
+    agent: str | None,
+    model: str | None,
     verbose: bool,
     ctx: typer.Context,
 ):
@@ -141,15 +140,7 @@ def execute_print_mode(
 
     # Process query with AI agent
     try:
-        if agent:
-            # Use explicitly requested agent
-            selected_agent = manager_agent.get_agent_by_name(agent)
-            response = selected_agent.run_sync(query)
-            response_text = response.output
-        else:
-            # Route through manager
-            response_text = manager_agent.process_request(query)
-
+        response_text = process_agent_request(query, manager_agent, agent)
         response_panel = Panel(
             Text(response_text, style=get_theme_color("text")),
             title=f"[bold {get_theme_color('success')}]Response[/bold {get_theme_color('success')}]",
@@ -168,8 +159,8 @@ def execute_print_mode(
 @app.command()
 def chat(
     ctx: typer.Context,
-    query: Optional[str] = typer.Argument(None, help="Initial query to start with"),
-    agent: Optional[str] = typer.Option(
+    query: str | None = typer.Argument(None, help="Initial query to start with"),
+    agent: str | None = typer.Option(
         None, "--agent", "-a", help="Specify which agent to chat with"
     ),
     verbose: bool = typer.Option(
@@ -180,17 +171,17 @@ def chat(
     if query:
         start_chat_mode_with_query(query, agent, verbose, ctx)
     else:
-        start_chat_mode(agent, verbose, ctx)
+        start_chat_mode(ctx, agent, verbose)
 
 
 @app.command("print")
 def print_cmd(
     ctx: typer.Context,
     query: str = typer.Argument(..., help="Query to process and print response"),
-    agent: Optional[str] = typer.Option(
+    agent: str | None = typer.Option(
         None, "--agent", "-a", help="Specify which agent to use"
     ),
-    model: Optional[str] = typer.Option(
+    model: str | None = typer.Option(
         None, "--model", "-m", help="Specify which model to use"
     ),
     verbose: bool = typer.Option(
@@ -203,22 +194,26 @@ def print_cmd(
 
 @app.command("agent")
 def agent_cmd(
+    ctx: typer.Context,
     action: str = typer.Argument(..., help="Action to perform (list, use, etc.)"),
 ):
     """Manage AI agents."""
-    # TODO: Implement agent management
-    console.print(
-        f"[{get_theme_color('warning')}]🚧 Agent management not yet implemented. Action: {action}[/{get_theme_color('warning')}]"
-    )
+    if action == "list":
+        _list_agents(ctx)
+    elif action == "status":
+        _show_agent_status(ctx)
+    else:
+        console.print(
+            f"[{get_theme_color('error')}]Unknown action: {action}[/{get_theme_color('error')}]\n"
+            f"[{get_theme_color('text')}]Available actions: list, status[/{get_theme_color('text')}]"
+        )
 
 
 @app.command("config")
 def config_cmd(
     ctx: typer.Context,
     subcommand: str = typer.Argument(..., help="Configuration area (theme, etc.)"),
-    action: Optional[str] = typer.Argument(
-        None, help="Action to perform or theme name"
-    ),
+    action: str | None = typer.Argument(None, help="Action to perform or theme name"),
 ):
     """Manage configuration."""
     if subcommand == "theme":
@@ -229,7 +224,7 @@ def config_cmd(
         )
 
 
-def handle_theme_config(action: Optional[str], ctx: typer.Context):
+def handle_theme_config(action: str | None, ctx: typer.Context):
     """Handle theme configuration commands."""
 
     theme_manager = ctx.obj.theme
@@ -256,7 +251,7 @@ def handle_theme_config(action: Optional[str], ctx: typer.Context):
     else:
         # Try to switch to the specified theme
         # First load custom themes to make sure we have everything available
-        themes_dir = "~/.cyro/themes"
+        themes_dir = get_themes_directory()
         custom_count = load_custom_themes(theme_manager, themes_dir)
         if custom_count > 0:
             print_info(
@@ -356,6 +351,58 @@ def status(ctx: typer.Context):
         status_text,
         title=f"[bold {_get_color('primary', ctx)}]Status[/bold {_get_color('primary', ctx)}]",
         border_style=_get_color("border", ctx),
+        padding=(1, 2),
+    )
+    console.print(panel)
+
+
+def _list_agents(ctx: typer.Context):
+    """List all available agents."""
+    manager_agent: ManagerAgent = ctx.obj.manager
+
+    if not manager_agent.registry.agents:
+        console.print(
+            f"[{get_theme_color('warning')}]No agents loaded[/{get_theme_color('warning')}]"
+        )
+        return
+
+    table = Table(title="Available Agents")
+    table.add_column("Name", style=get_theme_color("primary"))
+    table.add_column("Description", style=get_theme_color("text"))
+    table.add_column("Tools", style=get_theme_color("secondary"))
+
+    for agent in manager_agent.registry:
+        tools_str = ", ".join(agent.config.tools) if agent.config.tools else "None"
+        table.add_row(
+            agent.config.metadata.name,
+            agent.config.metadata.description[:60] + "..."
+            if len(agent.config.metadata.description) > 60
+            else agent.config.metadata.description,
+            tools_str,
+        )
+
+    console.print(table)
+
+
+def _show_agent_status(ctx: typer.Context):
+    """Show agent system status."""
+    manager_agent: ManagerAgent = ctx.obj.manager
+
+    agent_count = len(manager_agent.registry.agents)
+    loaded_agents = [agent.config.metadata.name for agent in manager_agent.registry]
+
+    status_text = Text()
+    status_text.append("Agents Loaded: ", style=get_theme_color("text"))
+    status_text.append(str(agent_count), style=f"bold {get_theme_color('success')}")
+    status_text.append("\n\nAvailable Agents:\n", style=get_theme_color("text"))
+
+    for agent_name in loaded_agents:
+        status_text.append(f"• {agent_name}\n", style=get_theme_color("info"))
+
+    panel = Panel(
+        status_text,
+        title=f"[bold {get_theme_color('primary')}]Agent Status[/bold {get_theme_color('primary')}]",
+        border_style=get_theme_color("border"),
         padding=(1, 2),
     )
     console.print(panel)

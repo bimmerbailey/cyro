@@ -230,7 +230,9 @@ You must respond with a structured JSON object matching the AgentSelection schem
 
             except Exception as e:
                 # Log error but continue loading other agents
-                print(f"Warning: Failed to load agent from {agent_file}: {e}")
+                logger.warning(
+                    "Failed to load agent", agent_file=agent_file, error=str(e)
+                )
                 continue
 
         # NOTE: Only add fallback general-engineer if no general-purpose agent exists

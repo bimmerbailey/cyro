@@ -290,7 +290,7 @@ custom_config:
 System prompt content."""
 
         config = AgentConfig.from_markdown(markdown_content)
-        
+
         assert config.metadata.name == "multiline-yaml-agent"
         assert "multiline description" in config.metadata.description
         assert config.tools == ["filesystem", "git", "web"]
@@ -306,7 +306,7 @@ tools: "filesystem, git: advanced"
 System prompt."""
 
         config = AgentConfig.from_markdown(markdown_content)
-        
+
         assert config.metadata.description == "Agent with: colons in description"
         assert config.tools == ["filesystem", "git: advanced"]
 
@@ -329,7 +329,7 @@ metadata:
 System prompt."""
 
         config = AgentConfig.from_markdown(markdown_content)
-        
+
         assert config.tools == ["filesystem", "git", "web"]
         assert config.metadata.name == "complex-yaml-agent"
 
@@ -362,7 +362,7 @@ version: "2.0"  # Updated version
 System prompt with special chars: 你好世界"""
 
         config = AgentConfig.from_markdown(markdown_content)
-        
+
         assert config.metadata.name == "special-char-agent"
         assert "émojis 🤖" in config.metadata.description
         assert config.tools == ["filesystem", "git"]
@@ -379,7 +379,7 @@ tools: filesystem, git, web, execution
 System prompt."""
 
         config = AgentConfig.from_markdown(markdown_content)
-        
+
         assert config.tools == ["filesystem", "git", "web", "execution"]
         assert config.metadata.name == "compat-agent"
 
@@ -396,7 +396,7 @@ tools: [filesystem, git]
 System prompt with color and model."""
 
         config = AgentConfig.from_markdown(markdown_content)
-        
+
         assert config.color == "blue"
         assert config.model == "gpt-4"
         assert config.metadata.name == "colored-agent"
@@ -412,7 +412,7 @@ description: Agent without optional fields
 Basic system prompt."""
 
         config = AgentConfig.from_markdown(markdown_content)
-        
+
         assert config.color is None
         assert config.model is None
         assert config.metadata.name == "default-agent"
