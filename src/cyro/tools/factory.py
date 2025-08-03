@@ -20,12 +20,14 @@ try:
     from cyro.tools.code import create_code_toolset
     CODE_TOOLS_AVAILABLE = True
 except ImportError:
+    print("Warning: Code tools not available due to missing dependencies")
     CODE_TOOLS_AVAILABLE = False
 
 try:
     from cyro.tools.git import create_git_toolset
     GIT_TOOLS_AVAILABLE = True
 except ImportError:
+    print("Warning: Git tools not available due to missing dependencies")
     GIT_TOOLS_AVAILABLE = False
 
 
@@ -81,8 +83,6 @@ def create_agent_toolset(
         return tool_factory(config)
     
     # For multiple tool categories, combine them
-    # This is more complex and might need different approach
-    # For now, just return the first one (web tools are working)
     master_toolset = FunctionToolset()
     
     for tool_name in tools:
@@ -92,9 +92,13 @@ def create_agent_toolset(
                 f"Unknown tool '{tool_name}'. Available tools: {available_tools}"
             )
         
-        # For now, just add web tools if requested
-        if tool_name == 'web':
-            return create_web_toolset(config)
+        # Get the toolset for this tool category
+        tool_factory = tool_factories[tool_name]
+        category_toolset = tool_factory(config)
+        
+        # Add all tools from this category to the master toolset
+        for tool in category_toolset.tools.values():
+            master_toolset.add_tool(tool)
     
     return master_toolset
 
