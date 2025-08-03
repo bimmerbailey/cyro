@@ -10,10 +10,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterator, Type
-from typing import Dict, Any, Type, Iterator
 from uuid import uuid4
-from pathlib import Path
-import re
 import yaml
 
 from pydantic import BaseModel, Field
@@ -22,6 +19,13 @@ from pydantic_ai import Agent
 from pydantic_ai.agent import AgentRunResult
 
 from cyro.config.settings import CyroConfig
+
+
+# Lazy import to avoid circular dependencies
+def _get_tool_factory():
+    """Lazy import of tool factory to avoid circular dependencies."""
+    from cyro.tools.factory import create_agent_toolset
+    return create_agent_toolset
 
 
 class AgentMetadata(BaseModel):
@@ -39,8 +43,7 @@ class AgentConfig:
     metadata: AgentMetadata
     system_prompt: str
     instructions: str | None = None
-    # TODO: come back to this
-    tools: Any | None = None
+    tools: list[str] | None = None
     result_type: Type[BaseModel] | None = None
     color: str | None = None
     model: str | None = None
@@ -143,12 +146,13 @@ class CyroAgent:
     config: AgentConfig
     agent: Agent
 
-    def __init__(self, config: AgentConfig, model: Any):
+    def __init__(self, config: AgentConfig, model: Any, cyro_config: CyroConfig | None = None):
         """Initialize CyroAgent with configuration and model.
 
         Args:
             config: Agent configuration from markdown parsing
             model: PydanticAI model instance (from CyroConfig.provider)
+            cyro_config: Optional Cyro configuration for tool setup
         """
         self.id = uuid4()
         self.metadata = config.metadata
@@ -162,6 +166,25 @@ class CyroAgent:
         }
         if config.result_type is not None:
             agent_kwargs["output_type"] = config.result_type
+
+        # Add tools - all agents get all available tools by default
+        try:
+            from cyro.tools.factory import get_toolset_for_agent_type, list_available_tools
+            
+            if config.tools:
+                # Use specific tools if specified
+                create_agent_toolset = _get_tool_factory()
+                toolset = create_agent_toolset(config.tools, cyro_config)
+            else:
+                # Default: give all available tools
+                all_tools = list_available_tools()
+                create_agent_toolset = _get_tool_factory()
+                toolset = create_agent_toolset(all_tools, cyro_config)
+            
+            agent_kwargs["toolsets"] = [toolset]
+        except Exception as e:
+            # Log warning but continue without tools
+            print(f"Warning: Failed to create toolset for {config.metadata.name}: {e}")
 
         self.agent = Agent(**agent_kwargs)
 
@@ -231,9 +254,8 @@ class AgentRegistry:
 
 
 def make_general_agent(settings: CyroConfig = CyroConfig()) -> CyroAgent:
-    """Make general agent instance."""
+    """Make general agent instance with all available tools."""
 
-    # TODO: All tools available here
     metadata = AgentMetadata(
         name="general-engineer",
         description="General-purpose software engineering agent for coding tasks, "
@@ -245,5 +267,6 @@ def make_general_agent(settings: CyroConfig = CyroConfig()) -> CyroAgent:
     config = AgentConfig(
         metadata=metadata,
         system_prompt="You are a helpful assistant",
+        # No tools specified = gets all available tools by default
     )
-    return CyroAgent(config, settings.provider)
+    return CyroAgent(config, settings.provider, settings)

@@ -93,13 +93,13 @@ Subagents are defined in markdown files:
 
 ## Description
 
-Specialized agent for code review and quality assurance. Reviews code for bugs, 
+Specialized agent for code review and quality assurance. Reviews code for bugs,
 performance issues, maintainability, and coding standards compliance.
 
 ## Best For
 
 - Code quality reviews
-- Bug detection and analysis  
+- Bug detection and analysis
 - Performance optimization suggestions
 - Coding standards enforcement
 - Refactoring recommendations
@@ -144,3 +144,4 @@ project
 - **Markdown parsing**: Agent configurations are parsed from markdown files in `agents/`
 - **Type safety**: Leverage PydanticAI's generics for dependencies and outputs
 - **Provider system**: Custom Ollama provider extends PydanticAI's model abstraction
+- Use absolute import, not relative

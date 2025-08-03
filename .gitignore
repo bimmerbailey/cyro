@@ -206,6 +206,7 @@ cython_debug/
 
 # Application config files
 .cyro/
+tmp/
 
 # Marimo
 marimo/_static/
