@@ -3,7 +3,7 @@
 from cyro.tools.execution import ExecutionTools, create_execution_toolset, get_safe_execution_tools
 from cyro.tools.filesystem import FilesystemTools, create_filesystem_toolset, get_basic_file_tools
 # from cyro.tools.git import create_git_toolset, get_basic_git_tools, get_full_git_tools  # Temporarily disabled - GitHubToolkit import issue
-from cyro.tools.web import create_web_toolset, get_basic_web_tools, get_full_web_tools
+from cyro.tools.web import create_web_toolset
 from cyro.tools.task_management import create_task_management_toolset, get_basic_task_tools
 # from cyro.tools.code import create_code_toolset, get_basic_code_tools, get_safe_code_tools  # Temporarily disabled - PythonREPLTool import issue
 from cyro.tools.factory import (
@@ -29,8 +29,6 @@ __all__ = [
     # "get_full_git_tools",
     # Web tools
     "create_web_toolset",
-    "get_basic_web_tools",
-    "get_full_web_tools",
     # Task management tools
     "create_task_management_toolset",
     "get_basic_task_tools",

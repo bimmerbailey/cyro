@@ -25,6 +25,7 @@ from cyro.config.settings import CyroConfig
 def _get_tool_factory():
     """Lazy import of tool factory to avoid circular dependencies."""
     from cyro.tools.factory import create_agent_toolset
+
     return create_agent_toolset
 
 
@@ -146,7 +147,9 @@ class CyroAgent:
     config: AgentConfig
     agent: Agent
 
-    def __init__(self, config: AgentConfig, model: Any, cyro_config: CyroConfig | None = None):
+    def __init__(
+        self, config: AgentConfig, model: Any, cyro_config: CyroConfig | None = None
+    ):
         """Initialize CyroAgent with configuration and model.
 
         Args:
@@ -169,8 +172,11 @@ class CyroAgent:
 
         # Add tools - all agents get all available tools by default
         try:
-            from cyro.tools.factory import get_toolset_for_agent_type, list_available_tools
-            
+            from cyro.tools.factory import (
+                get_toolset_for_agent_type,
+                list_available_tools,
+            )
+
             if config.tools:
                 # Use specific tools if specified
                 create_agent_toolset = _get_tool_factory()
@@ -180,7 +186,7 @@ class CyroAgent:
                 all_tools = list_available_tools()
                 create_agent_toolset = _get_tool_factory()
                 toolset = create_agent_toolset(all_tools, cyro_config)
-            
+
             agent_kwargs["toolsets"] = [toolset]
         except Exception as e:
             # Log warning but continue without tools

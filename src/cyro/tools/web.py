@@ -16,6 +16,8 @@ from urllib.parse import urlparse
 from pydantic import BaseModel, Field
 from pydantic_ai.toolsets import FunctionToolset
 from pydantic_ai.common_tools.duckduckgo import duckduckgo_search_tool
+import requests
+from bs4 import BeautifulSoup
 
 from cyro.config.settings import CyroConfig
 
@@ -118,6 +120,7 @@ class WebTools:
             if parsed.scheme not in ["http", "https"]:
                 return False
 
+            # TODO: What about local dev container?
             # Block localhost and private IPs (basic check)
             if parsed.hostname in ["localhost", "127.0.0.1", "0.0.0.0"]:
                 return False
@@ -137,9 +140,6 @@ class WebTools:
         self.rate_limiter.wait_if_needed()
 
         try:
-            import requests
-            from bs4 import BeautifulSoup
-
             # Fetch the page
             headers = {"User-Agent": "Mozilla/5.0 (compatible; Cyro-Agent/1.0)"}
 
@@ -223,27 +223,3 @@ def create_web_toolset(config: Optional[CyroConfig] = None) -> FunctionToolset:
         return web_tools.web_fetch(request)
 
     return toolset
-
-
-def get_basic_web_tools(config: Optional[CyroConfig] = None) -> FunctionToolset:
-    """Get basic web tools with DuckDuckGo search and web fetching.
-
-    Args:
-        config: Cyro configuration
-
-    Returns:
-        FunctionToolset with web tools
-    """
-    return create_web_toolset(config)
-
-
-def get_full_web_tools(config: Optional[CyroConfig] = None) -> FunctionToolset:
-    """Get web toolset (same as basic - simplified implementation).
-
-    Args:
-        config: Cyro configuration
-
-    Returns:
-        FunctionToolset with web tools
-    """
-    return create_web_toolset(config)

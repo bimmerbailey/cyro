@@ -11,7 +11,7 @@ No LangChain equivalent exists - custom implementation required.
 
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 
 from pydantic import BaseModel, Field
@@ -270,7 +270,6 @@ class TaskManager:
                 TaskPriority.MEDIUM: 8,
                 TaskPriority.LOW: 24
             }
-            from datetime import timedelta
             estimated_completion = datetime.now() + timedelta(hours=hours_to_complete[request.priority])
         
         return TaskDelegationResult(

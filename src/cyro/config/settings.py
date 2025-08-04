@@ -43,6 +43,7 @@ class CyroConfig(BaseSettings):
     auto_update: bool = True
 
     # Provider configurations (Ollama-focused)
+    # TODO: Do we need host,port, and base_url?
     host: str = "localhost"
     port: int = 11434
     model: str = "qwen2.5-coder"

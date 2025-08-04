@@ -16,6 +16,7 @@ from typing import Any, Optional
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent
 from pydantic_ai.ext.langchain import LangChainToolset
+from pydantic_ai.toolsets import FunctionToolset
 
 from cyro.config.settings import CyroConfig
 
@@ -357,7 +358,7 @@ class ExecutionTools:
 def create_execution_toolset(
     config: Optional[CyroConfig] = None,
     enable_human_approval: bool = True,
-) -> tuple[LangChainToolset, Any]:
+) -> FunctionToolset:
     """
     Create a complete execution toolset for PydanticAI agents using current working directory.
 
@@ -366,17 +367,108 @@ def create_execution_toolset(
         enable_human_approval: Enable human approval workflow
 
     Returns:
-        Tuple of (LangChain toolset, custom tools creator function)
+        FunctionToolset containing shell execution tools
     """
     execution_tools = ExecutionTools(
         config=config,
         enable_human_approval=enable_human_approval,
     )
 
-    return (
-        execution_tools.get_langchain_toolset(),
-        execution_tools.create_custom_tools,
-    )
+    # Create FunctionToolset for all execution operations
+    toolset = FunctionToolset()
+    
+    # Add shell execution tool
+    @toolset.tool
+    def execute_shell_command(request: ShellCommandRequest) -> str:
+        """
+        Execute a shell command with security controls and timeout.
+
+        Args:
+            request: Shell command execution request
+
+        Returns:
+            Formatted execution result or error message
+        """
+        try:
+            # Validate working directory
+            work_dir = execution_tools._validate_working_dir(request.working_dir)
+
+            # Security check for dangerous commands
+            is_dangerous = execution_tools._is_dangerous_command(request.command)
+
+            if is_dangerous and not request.allow_dangerous:
+                return f"🚫 Command blocked: '{request.command}' is potentially dangerous. Use allow_dangerous=True to override."
+
+            # Human approval check
+            if is_dangerous or execution_tools.enable_human_approval:
+                if not execution_tools._get_user_approval(request.command):
+                    return f"❌ Command execution cancelled by user: {request.command}"
+
+            # Execute command
+            start_time = time.time()
+            try:
+                result = subprocess.run(
+                    request.command,
+                    shell=True,
+                    cwd=work_dir,
+                    capture_output=True,
+                    text=True,
+                    timeout=request.timeout_seconds,
+                )
+
+                execution_time = time.time() - start_time
+
+                # Format output
+                status_emoji = "✅" if result.returncode == 0 else "❌"
+                output = f"{status_emoji} Command: {request.command}\n"
+                output += f"📁 Working Directory: {work_dir}\n"
+                output += f"⏱️  Execution Time: {execution_time:.2f}s\n"
+                output += f"🔢 Return Code: {result.returncode}\n\n"
+
+                if result.stdout:
+                    output += f"📤 STDOUT:\n{result.stdout}\n"
+                if result.stderr:
+                    output += f"📥 STDERR:\n{result.stderr}\n"
+
+                return output
+
+            except subprocess.TimeoutExpired:
+                return f"⏰ Command timed out after {request.timeout_seconds} seconds: {request.command}"
+            except subprocess.CalledProcessError as e:
+                return f"💥 Command failed with return code {e.returncode}: {e.cmd}\nError: {e.stderr}"
+
+        except Exception as e:
+            return f"💥 Error executing command: {str(e)}"
+
+    @toolset.tool  
+    def execute_safe_command(command: str, timeout: int = 15) -> str:
+        """
+        Execute a safe shell command (read-only operations only).
+
+        Args:
+            command: Shell command to execute (must be read-only)
+            timeout: Timeout in seconds
+
+        Returns:
+            Command output or error message
+        """
+        # Create a safe command request
+        safe_request = ShellCommandRequest(
+            command=command,
+            timeout_seconds=timeout,
+            working_dir=None,
+            allow_dangerous=False
+        )
+        
+        # Temporarily disable human approval for safe commands
+        original_approval = execution_tools.enable_human_approval
+        try:
+            execution_tools.enable_human_approval = False
+            return execute_shell_command(safe_request)
+        finally:
+            execution_tools.enable_human_approval = original_approval
+    
+    return toolset
 
 
 # Convenience function for safe-only execution

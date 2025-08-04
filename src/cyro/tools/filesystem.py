@@ -8,6 +8,7 @@ This module provides a comprehensive set of filesystem tools by combining:
 Security: All file operations are scoped to configurable root directories.
 """
 
+import shutil
 import warnings
 from pathlib import Path
 from typing import List, Optional
@@ -222,7 +223,6 @@ class _FilesystemOperations:
             dest.parent.mkdir(parents=True, exist_ok=True)
             
             # Copy file
-            import shutil
             shutil.copy2(source, dest)
             
             return f"Successfully copied {source_path} to {destination_path}"

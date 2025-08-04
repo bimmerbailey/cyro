@@ -12,6 +12,7 @@ This module tests the theme management functionality including:
 import pytest
 from pathlib import Path
 import tempfile
+import toml
 
 from cyro.config.themes import (
     ColorScheme,
@@ -322,8 +323,6 @@ class TestCustomThemeLoading:
 
             theme_file = Path(temp_dir) / "custom_test.toml"
             with open(theme_file, "w") as f:
-                import toml
-
                 toml.dump(custom_theme_data, f)
 
             tm = ThemeManager()
@@ -372,8 +371,6 @@ class TestCustomThemeLoading:
 
             theme_file = Path(temp_dir) / "incomplete.toml"
             with open(theme_file, "w") as f:
-                import toml
-
                 toml.dump(incomplete_theme, f)
 
             tm = ThemeManager()
@@ -414,8 +411,6 @@ class TestCustomThemeLoading:
 
             theme_file = Path(temp_dir) / "cyro.toml"
             with open(theme_file, "w") as f:
-                import toml
-
                 toml.dump(custom_cyro, f)
 
             tm = ThemeManager()
