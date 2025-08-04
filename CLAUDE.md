@@ -145,3 +145,4 @@ project
 - **Type safety**: Leverage PydanticAI's generics for dependencies and outputs
 - **Provider system**: Custom Ollama provider extends PydanticAI's model abstraction
 - Use absolute import, not relative
+- All import statements should be at the top level unless absolutely needed
