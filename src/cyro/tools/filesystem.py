@@ -47,10 +47,11 @@ class GlobSearchRequest(BaseModel):
     )
 
 
+# TODO: Confirmation dialogs
 class _FilesystemOperations:
     """
     Core filesystem operations with enhanced security and error handling.
-    
+
     This class centralizes all filesystem logic to eliminate code duplication.
     """
 
@@ -95,7 +96,9 @@ class _FilesystemOperations:
             try:
                 final_path.relative_to(self.root_dir.resolve())
             except ValueError:
-                raise ValueError(f"Symlink target outside allowed root directory: {file_path}")
+                raise ValueError(
+                    f"Symlink target outside allowed root directory: {file_path}"
+                )
 
         # Security check: ensure path is within root directory
         try:
@@ -106,8 +109,9 @@ class _FilesystemOperations:
             )
 
         return resolved_path
-
-    def _validate_file_size(self, path: Path, max_size_mb: int, operation: str) -> None:
+    
+    @staticmethod
+    def _validate_file_size(path: Path, max_size_mb: int, operation: str) -> None:
         """
         Validate file size is within limits.
 
@@ -136,10 +140,10 @@ class _FilesystemOperations:
                 return f"Error: File {file_path} does not exist"
             if not path.is_file():
                 return f"Error: {file_path} is not a file"
-            
+
             self._validate_file_size(path, self.max_file_size_mb, "reading")
             return path.read_text(encoding="utf-8")
-            
+
         except FileNotFoundError:
             return f"Error: File {file_path} does not exist"
         except PermissionError:
@@ -155,18 +159,18 @@ class _FilesystemOperations:
         """Write content to a file with size validation."""
         try:
             path = self._validate_path(file_path)
-            
+
             # Validate content size
-            content_size = len(content.encode('utf-8'))
+            content_size = len(content.encode("utf-8"))
             max_size_bytes = self.max_write_size_mb * 1024 * 1024
             if content_size > max_size_bytes:
                 return f"Error: Content too large ({content_size:,} bytes > {max_size_bytes:,} bytes)"
-            
+
             # Create parent directories if they don't exist
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(content, encoding="utf-8")
             return f"Successfully wrote to {file_path}"
-            
+
         except PermissionError:
             return f"Error: Permission denied writing to {file_path}"
         except OSError as e:
@@ -184,7 +188,7 @@ class _FilesystemOperations:
                 return f"Error: Directory {directory_path} does not exist"
             if not path.is_dir():
                 return f"Error: {directory_path} is not a directory"
-            
+
             items = []
             for item in sorted(path.iterdir()):
                 try:
@@ -193,12 +197,12 @@ class _FilesystemOperations:
                 except (OSError, PermissionError):
                     # Skip items we can't access
                     items.append(f"❓ {item.name} (access denied)")
-            
+
             if not items:
                 return f"Directory {directory_path} is empty"
-            
+
             return f"Contents of {directory_path}:\n" + "\n".join(items)
-            
+
         except PermissionError:
             return f"Error: Permission denied accessing directory {directory_path}"
         except ValueError as e:
@@ -211,22 +215,22 @@ class _FilesystemOperations:
         try:
             source = self._validate_path(source_path)
             dest = self._validate_path(destination_path)
-            
+
             if not source.exists():
                 return f"Error: Source file {source_path} does not exist"
             if not source.is_file():
                 return f"Error: {source_path} is not a file"
-            
+
             self._validate_file_size(source, self.max_write_size_mb, "copying")
-            
+
             # Create parent directories if they don't exist
             dest.parent.mkdir(parents=True, exist_ok=True)
-            
+
             # Copy file
             shutil.copy2(source, dest)
-            
+
             return f"Successfully copied {source_path} to {destination_path}"
-            
+
         except FileNotFoundError:
             return f"Error: Source file {source_path} does not exist"
         except PermissionError:
@@ -246,10 +250,10 @@ class _FilesystemOperations:
                 return f"Error: File {file_path} does not exist"
             if not path.is_file():
                 return f"Error: {file_path} is not a file"
-            
+
             path.unlink()
             return f"Successfully deleted {file_path}"
-            
+
         except FileNotFoundError:
             return f"Error: File {file_path} does not exist"
         except PermissionError:
@@ -261,7 +265,13 @@ class _FilesystemOperations:
         except Exception as e:
             return f"Unexpected error deleting file: {str(e)}"
 
-    def edit_file(self, file_path: str, old_string: str, new_string: str, replace_all: bool = False) -> str:
+    def edit_file(
+        self,
+        file_path: str,
+        old_string: str,
+        new_string: str,
+        replace_all: bool = False,
+    ) -> str:
         """Edit a file by replacing old_string with new_string."""
         try:
             path = self._validate_path(file_path)
@@ -291,7 +301,7 @@ class _FilesystemOperations:
                 return f"Warning: No changes made. old_string not found in {file_path}"
 
             # Validate new content size
-            new_content_size = len(new_content.encode('utf-8'))
+            new_content_size = len(new_content.encode("utf-8"))
             max_size_bytes = self.max_write_size_mb * 1024 * 1024
             if new_content_size > max_size_bytes:
                 return f"Error: Edited content too large ({new_content_size:,} bytes > {max_size_bytes:,} bytes)"
@@ -299,7 +309,9 @@ class _FilesystemOperations:
             # Write updated content
             path.write_text(new_content, encoding="utf-8")
 
-            return f"Successfully edited {file_path}: {replacements} replacement(s) made"
+            return (
+                f"Successfully edited {file_path}: {replacements} replacement(s) made"
+            )
 
         except FileNotFoundError:
             return f"Error: File {file_path} does not exist"
@@ -322,7 +334,7 @@ class _FilesystemOperations:
                     return f"Error: {root_dir} is not a directory"
 
             # Validate glob pattern (basic check)
-            if '..' in pattern:
+            if ".." in pattern:
                 return "Error: Parent directory references (..) not allowed in pattern"
 
             # Perform glob search
@@ -374,7 +386,7 @@ class FilesystemTools:
         # Only initialized if actually needed to reduce startup overhead
         self._langchain_toolkit = None
         self._langchain_toolset = None
-    
+
     @property
     def langchain_toolkit(self) -> FileManagementToolkit:
         """Lazy initialization of LangChain toolkit (deprecated)."""
@@ -392,16 +404,20 @@ class FilesystemTools:
                 ],
             )
         return self._langchain_toolkit
-    
+
     @property
     def langchain_toolset(self) -> LangChainToolset:
         """Lazy initialization of LangChain toolset (deprecated)."""
         if self._langchain_toolset is None:
-            self._langchain_toolset = LangChainToolset(self.langchain_toolkit.get_tools())  # type: ignore
+            self._langchain_toolset = LangChainToolset(
+                self.langchain_toolkit.get_tools()
+            )  # type: ignore
         return self._langchain_toolset
 
     @classmethod
-    def for_directory(cls, root_dir: str, config: Optional[CyroConfig] = None) -> "FilesystemTools":
+    def for_directory(
+        cls, root_dir: str, config: Optional[CyroConfig] = None
+    ) -> "FilesystemTools":
         """
         Create filesystem tools for a specific directory.
 
@@ -424,15 +440,17 @@ class FilesystemTools:
         instance = cls(config=config)
         instance._operations.root_dir = root_path
         instance.root_dir = root_path
-        
+
         # Reset lazy-loaded LangChain components so they use the new root directory
         instance._langchain_toolkit = None
         instance._langchain_toolset = None
-        
+
         return instance
 
     @classmethod
-    def for_testing(cls, temp_dir: str, config: Optional[CyroConfig] = None) -> "FilesystemTools":
+    def for_testing(
+        cls, temp_dir: str, config: Optional[CyroConfig] = None
+    ) -> "FilesystemTools":
         """
         Create filesystem tools for testing with a temporary directory.
 
@@ -445,7 +463,7 @@ class FilesystemTools:
         """
         temp_path = Path(temp_dir).resolve()
         temp_path.mkdir(parents=True, exist_ok=True)  # Only create for testing
-        
+
         return cls.for_directory(str(temp_path), config=config)
 
     def _validate_path(self, file_path: str) -> Path:
@@ -455,14 +473,14 @@ class FilesystemTools:
     def get_langchain_toolset(self) -> LangChainToolset:
         """
         Get the LangChain toolset for PydanticAI integration.
-        
-        .. deprecated:: 
+
+        .. deprecated::
             Use create_filesystem_toolset() instead for better performance and security.
         """
         warnings.warn(
             "get_langchain_toolset() is deprecated. Use create_filesystem_toolset() instead.",
             DeprecationWarning,
-            stacklevel=2
+            stacklevel=2,
         )
         return self.langchain_toolset
 
@@ -478,10 +496,10 @@ class FilesystemTools:
         def edit_file(request: FileEditRequest) -> str:
             """Edit a file by replacing old_string with new_string."""
             return self._operations.edit_file(
-                request.file_path, 
-                request.old_string, 
-                request.new_string, 
-                request.replace_all
+                request.file_path,
+                request.old_string,
+                request.new_string,
+                request.replace_all,
             )
 
         @agent.tool_plain
@@ -494,11 +512,11 @@ class FilesystemTools:
                         request.file_path,
                         edit.old_string,
                         edit.new_string,
-                        edit.replace_all
+                        edit.replace_all,
                     )
                     if result.startswith("Error"):
                         return f"Error at edit {i + 1}: {result}"
-                
+
                 return f"Successfully applied {len(request.edits)} edits to {request.file_path}"
             except Exception as e:
                 return f"Error in multi-edit: {str(e)}"
@@ -521,10 +539,10 @@ def create_filesystem_toolset(config: Optional[CyroConfig] = None) -> FunctionTo
     """
     # Use centralized operations to eliminate code duplication
     operations = _FilesystemOperations(config=config)
-    
+
     # Create FunctionToolset for all file operations
     toolset = FunctionToolset()
-    
+
     # Add filesystem tools using centralized operations
     @toolset.tool
     def read_file(file_path: str) -> str:
@@ -608,7 +626,7 @@ def create_filesystem_toolset(config: Optional[CyroConfig] = None) -> FunctionTo
             request.file_path,
             request.old_string,
             request.new_string,
-            request.replace_all
+            request.replace_all,
         )
 
     @toolset.tool
@@ -629,11 +647,11 @@ def create_filesystem_toolset(config: Optional[CyroConfig] = None) -> FunctionTo
                     request.file_path,
                     edit.old_string,
                     edit.new_string,
-                    edit.replace_all
+                    edit.replace_all,
                 )
                 if result.startswith("Error"):
                     return f"Error at edit {i + 1}: {result}"
-            
+
             return f"Successfully applied {len(request.edits)} edits to {request.file_path}"
         except Exception as e:
             return f"Error in multi-edit: {str(e)}"
@@ -650,7 +668,7 @@ def create_filesystem_toolset(config: Optional[CyroConfig] = None) -> FunctionTo
             List of matching file paths or error description
         """
         return operations.glob_search(request.pattern, request.root_dir)
-    
+
     return toolset
 
 
