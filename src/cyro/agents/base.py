@@ -11,8 +11,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterator, Type
 from uuid import uuid4
-import yaml
 
+import yaml
 from pydantic import BaseModel, Field
 from pydantic.types import UUID4
 from pydantic_ai import Agent
@@ -172,10 +172,8 @@ class CyroAgent:
 
         # Add tools - all agents get all available tools by default
         try:
-            from cyro.tools.factory import (
-                get_toolset_for_agent_type,
-                list_available_tools,
-            )
+            from cyro.tools.factory import (get_toolset_for_agent_type,
+                                            list_available_tools)
 
             if config.tools:
                 # Use specific tools if specified

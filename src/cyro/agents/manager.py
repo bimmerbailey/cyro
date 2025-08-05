@@ -11,13 +11,8 @@ import structlog.stdlib
 from pydantic import BaseModel, Field
 from pydantic.types import UUID4
 
-from cyro.agents.base import (
-    AgentConfig,
-    AgentMetadata,
-    AgentRegistry,
-    CyroAgent,
-    make_general_agent,
-)
+from cyro.agents.base import (AgentConfig, AgentMetadata, AgentRegistry,
+                              CyroAgent, make_general_agent)
 from cyro.config.settings import CyroConfig
 
 logger = structlog.stdlib.get_logger(__name__)

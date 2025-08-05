@@ -12,28 +12,13 @@ from rich.panel import Panel
 from rich.text import Text
 
 from cyro.agents.manager import ManagerAgent
-from cyro.cli.shared import (
-    ChatCommandResult,
-    get_themed_color,
-    get_themes_directory,
-    process_agent_request,
-)
-from cyro.config.themes import (
-    get_current_theme_name,
-    get_theme_color,
-    get_theme_info,
-    list_themes,
-    load_custom_themes,
-    set_theme,
-    ThemeManager,
-)
-from cyro.utils.console import (
-    console,
-    print_error,
-    print_info,
-    print_success,
-    print_warning,
-)
+from cyro.cli.shared import (ChatCommandResult, get_themed_color,
+                             get_themes_directory, process_agent_request)
+from cyro.config.themes import (ThemeManager, get_current_theme_name,
+                                get_theme_color, get_theme_info, list_themes,
+                                load_custom_themes, set_theme)
+from cyro.utils.console import (console, print_error, print_info,
+                                print_success, print_warning)
 
 
 def _show_welcome_panels(theme_manager=None):

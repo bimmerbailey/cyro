@@ -376,7 +376,7 @@ def create_execution_toolset(
 
     # Create FunctionToolset for all execution operations
     toolset = FunctionToolset()
-    
+
     # Add shell execution tool
     @toolset.tool
     def execute_shell_command(request: ShellCommandRequest) -> str:
@@ -440,7 +440,7 @@ def create_execution_toolset(
         except Exception as e:
             return f"💥 Error executing command: {str(e)}"
 
-    @toolset.tool  
+    @toolset.tool
     def execute_safe_command(command: str, timeout: int = 15) -> str:
         """
         Execute a safe shell command (read-only operations only).
@@ -457,9 +457,9 @@ def create_execution_toolset(
             command=command,
             timeout_seconds=timeout,
             working_dir=None,
-            allow_dangerous=False
+            allow_dangerous=False,
         )
-        
+
         # Temporarily disable human approval for safe commands
         original_approval = execution_tools.enable_human_approval
         try:
@@ -467,7 +467,7 @@ def create_execution_toolset(
             return execute_shell_command(safe_request)
         finally:
             execution_tools.enable_human_approval = original_approval
-    
+
     return toolset
 
 

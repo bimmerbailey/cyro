@@ -22,6 +22,7 @@ from cyro.config.settings import CyroConfig
 try:
     from langchain_community.agent_toolkits import GitHubToolkit
     from pydantic_ai.ext.langchain import LangChainToolset
+
     GITHUB_AVAILABLE = True
 except ImportError:
     GITHUB_AVAILABLE = False
@@ -109,7 +110,7 @@ class GitLogResult(BaseModel):
 
 class _GitOperations:
     """Internal git operations class following filesystem.py pattern."""
-    
+
     # TODO: Implement dangerous command detection and warning system
     # TODO: Add dry-run mode for destructive operations
 
@@ -446,8 +447,10 @@ def create_github_toolset(
         ValueError: If GitHub credentials are invalid
     """
     if not GITHUB_AVAILABLE:
-        raise ImportError("GitHub toolkit not available. Install langchain-community with GitHub support.")
-        
+        raise ImportError(
+            "GitHub toolkit not available. Install langchain-community with GitHub support."
+        )
+
     try:
         github_toolkit = GitHubToolkit(
             github_app_id=github_app_id,
@@ -494,7 +497,9 @@ def create_full_git_toolset(
                 # Log warning but don't fail - local git still works
                 print(f"Warning: Could not initialize GitHub toolkit: {e}")
         else:
-            print("Warning: GitHub integration requested but LangChain GitHub toolkit not available")
+            print(
+                "Warning: GitHub integration requested but LangChain GitHub toolkit not available"
+            )
 
     return toolset
 

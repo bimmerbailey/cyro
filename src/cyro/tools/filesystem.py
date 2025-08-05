@@ -109,7 +109,7 @@ class _FilesystemOperations:
             )
 
         return resolved_path
-    
+
     @staticmethod
     def _validate_file_size(path: Path, max_size_mb: int, operation: str) -> None:
         """

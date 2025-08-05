@@ -10,12 +10,8 @@ from typing import List, cast
 from pydantic import AnyHttpUrl, BaseModel, Field
 from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.providers.openai import OpenAIProvider
-from pydantic_settings import (
-    BaseSettings,
-    PydanticBaseSettingsSource,
-    SettingsConfigDict,
-    TomlConfigSettingsSource,
-)
+from pydantic_settings import (BaseSettings, PydanticBaseSettingsSource,
+                               SettingsConfigDict, TomlConfigSettingsSource)
 
 
 class SecurityConfig(BaseModel):
@@ -24,6 +20,17 @@ class SecurityConfig(BaseModel):
     sandbox_mode: bool = True
     require_approval: List[str] = ["filesystem", "code-execution"]
     max_file_size: str = "10MB"
+
+
+class MCPConfig(BaseModel):
+    """MCP (Model Context Protocol) configuration."""
+
+    enabled: bool = True
+    python_server_enabled: bool = True
+    python_server_transport: str = "stdio"  # stdio, streamable_http, sse
+    python_server_url: str = "http://localhost:8000/mcp"  # for http/sse transports
+    deno_executable: str = "deno"  # path to deno executable
+    tool_prefix: str = "mcp_"  # prefix for MCP tools to avoid conflicts
 
 
 class CyroConfig(BaseSettings):
@@ -54,6 +61,9 @@ class CyroConfig(BaseSettings):
 
     # Security configuration
     security: SecurityConfig = SecurityConfig()
+
+    # MCP configuration
+    mcp: MCPConfig = MCPConfig()
 
     # UI settings
     theme: str = "cyro"

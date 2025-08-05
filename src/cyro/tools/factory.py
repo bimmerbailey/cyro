@@ -5,15 +5,15 @@ This module provides a centralized way to create and manage tool combinations
 for different agent types and use cases.
 """
 
-from typing import List, Optional, Callable
+from typing import Callable, List, Optional
 
 from pydantic_ai.toolsets import FunctionToolset
 
 from cyro.config.settings import CyroConfig
 from cyro.tools.execution import create_execution_toolset
 from cyro.tools.filesystem import create_filesystem_toolset
-from cyro.tools.web import create_web_toolset
 from cyro.tools.task_management import create_task_management_toolset
+from cyro.tools.web import create_web_toolset
 
 # Import code and git tools conditionally
 try:

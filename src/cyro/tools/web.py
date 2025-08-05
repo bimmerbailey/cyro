@@ -13,11 +13,11 @@ import time
 from typing import Dict, List, Optional
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, Field
-from pydantic_ai.toolsets import FunctionToolset
-from pydantic_ai.common_tools.duckduckgo import duckduckgo_search_tool
 import requests
 from bs4 import BeautifulSoup
+from pydantic import BaseModel, Field
+from pydantic_ai.common_tools.duckduckgo import duckduckgo_search_tool
+from pydantic_ai.toolsets import FunctionToolset
 
 from cyro.config.settings import CyroConfig
 
