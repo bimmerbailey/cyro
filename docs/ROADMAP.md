@@ -21,13 +21,13 @@ product at every stage.
 
 ### 1.2 Search Command (`cmd/search.go`)
 
-- [ ] Regex pattern matching (`--pattern`)
-- [ ] Level filtering (`--level`)
-- [ ] Time range filtering (`--since`, `--until`) with relative time support (e.g., `1h`, `30m`)
-- [ ] Context lines around matches (`--context`)
-- [ ] Inverted matching (`--invert`)
-- [ ] Match count mode (`--count`)
-- [ ] Multi-file support (glob patterns)
+- [x] Regex pattern matching (`--pattern`)
+- [x] Level filtering (`--level`)
+- [x] Time range filtering (`--since`, `--until`) with relative time support (e.g., `1h`, `30m`)
+- [x] Context lines around matches (`--context`)
+- [x] Inverted matching (`--invert`)
+- [x] Match count mode (`--count`)
+- [x] Multi-file support (glob patterns)
 
 ### 1.3 Stats Command (`cmd/stats.go`)
 
