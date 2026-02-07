@@ -84,8 +84,14 @@ func (a *Analyzer) Filter(entries []config.LogEntry, opts FilterOptions) []confi
 	}
 
 	for _, e := range entries {
-		if opts.MinLevel != config.LevelUnknown && e.Level < opts.MinLevel {
-			continue
+		if opts.MinLevel != config.LevelUnknown {
+			if opts.ExactLevel {
+				if e.Level != opts.MinLevel {
+					continue
+				}
+			} else if e.Level < opts.MinLevel {
+				continue
+			}
 		}
 
 		if !opts.Since.IsZero() && !e.Timestamp.IsZero() && e.Timestamp.Before(opts.Since) {
@@ -114,11 +120,12 @@ func (a *Analyzer) Filter(entries []config.LogEntry, opts FilterOptions) []confi
 
 // FilterOptions defines the criteria for filtering log entries.
 type FilterOptions struct {
-	Pattern  string
-	MinLevel config.LogLevel
-	Since    time.Time
-	Until    time.Time
-	Invert   bool
+	Pattern    string
+	MinLevel   config.LogLevel
+	Since      time.Time
+	Until      time.Time
+	Invert     bool
+	ExactLevel bool
 }
 
 // topMessages extracts the N most frequent messages.
