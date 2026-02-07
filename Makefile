@@ -1,65 +1,62 @@
-.PHONY: help install install-all clean lint format type-check test run build all check
+BINARY_NAME := cyro
+VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
+DATE := $(shell date -u '+%Y-%m-%dT%H:%M:%SZ')
+LDFLAGS := -ldflags "-X github.com/bimmerbailey/cyro/cmd.version=$(VERSION) \
+	-X github.com/bimmerbailey/cyro/cmd.commit=$(COMMIT) \
+	-X github.com/bimmerbailey/cyro/cmd.date=$(DATE)"
 
-# Default target
+.PHONY: help build run test lint fmt vet clean install tidy
+
+## help: show this help message
 help:
-	@echo "Available commands:"
-	@echo "  install     - Install production dependencies only"
-	@echo "  install-all - Install all dependencies (production + dev + extras)"
-	@echo "  clean       - Clean up build artifacts and cache"
-	@echo "  lint        - Run ruff linter"
-	@echo "  format      - Format code with ruff and isort"
-	@echo "  type-check  - Run pyright type checking"
-	@echo "  test        - Run pytest tests"
-	@echo "  run         - Run the application"
-	@echo "  build       - Build the package"
-	@echo "  check       - Run all code quality checks (lint + type-check)"
-	@echo "  all         - Run format, check, and test"
+	@echo "Usage: make [target]"
+	@echo ""
+	@echo "Targets:"
+	@grep -E '^## ' $(MAKEFILE_LIST) | sed 's/## /  /'
 
-# Installation targets
-install:
-	uv sync --no-dev
-
-install-all:
-	uv sync --all-groups --all-extras
-
-# Clean up
-clean:
-	rm -rf dist/
-	rm -rf .uv_cache/
-	find . -type d -name "__pycache__" -exec rm -rf {} +
-	find . -type f -name "*.pyc" -delete
-	find . -type d -name "*.egg-info" -exec rm -rf {} +
-
-# Code quality
-lint:
-	uv run ruff check src/
-
-format:
-	uv run ruff format src/
-	uv run isort src/
-
-type-check:
-	uv run pyright src/
-
-# Testing
-test:
-	uv run pytest tests/ -v
-
-# Development
-run:
-	uv run cyro
-
-# Build
+## build: compile the binary
 build:
-	uv build
+	go build $(LDFLAGS) -o bin/$(BINARY_NAME) .
 
-# Combined targets
-check: lint type-check
+## run: build and run the binary
+run: build
+	./bin/$(BINARY_NAME)
 
-all: format check test
+## install: install the binary to GOPATH/bin
+install:
+	go install $(LDFLAGS) .
 
-# Fix common issues
-fix:
-	uv run ruff check --fix src/
-	uv run ruff format src/
-	uv run isort src/
+## test: run all tests
+test:
+	go test -v -race -count=1 ./...
+
+## test-cover: run tests with coverage
+test-cover:
+	go test -v -race -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
+
+## lint: run golangci-lint (install: https://golangci-lint.run)
+lint:
+	golangci-lint run ./...
+
+## fmt: format all Go files
+fmt:
+	gofmt -s -w .
+
+## vet: run go vet
+vet:
+	go vet ./...
+
+## tidy: tidy and verify go modules
+tidy:
+	go mod tidy
+	go mod verify
+
+## clean: remove build artifacts
+clean:
+	rm -rf bin/
+	rm -f coverage.out coverage.html
+
+## check: run fmt, vet, and test
+check: fmt vet test
