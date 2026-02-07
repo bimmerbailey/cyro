@@ -1,148 +1,74 @@
-# CLAUDE.md
+# Cyro - CLI Log Analysis Tool
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+CLI tool for log file analysis powered by local LLMs. Written in Go, using Cobra for CLI and Viper for configuration.
 
-## Project Overview
+See @README.md for project overview and @docs/DESIGN.md for architecture details.
 
-Cyro is a terminal-based AI coding agent with dynamic subagent creation through markdown configuration files. It
-connects to local Ollama by default (privacy-first) with support for multiple AI providers.
+## Quick Reference
 
-## Development Commands
+| Command           | Purpose                             |
+|-------------------|-------------------------------------|
+| `make build`      | Compile binary to `bin/cyro`        |
+| `make test`       | Run all tests with race detection   |
+| `make test-cover` | Run tests with HTML coverage report |
+| `make fmt`        | Format all Go files (`gofmt -s`)    |
+| `make vet`        | Run `go vet` static analysis        |
+| `make lint`       | Run `golangci-lint`                 |
+| `make check`      | Run fmt + vet + test in sequence    |
+| `make tidy`       | Tidy and verify Go modules          |
+| `make clean`      | Remove build artifacts              |
 
-### Setup
+## Project Structure
 
-- `make install` - Install production dependencies only
-- `make install-all` - Install all dependencies (production + dev + extras)
+- `main.go` -- Entrypoint, calls `cmd.Execute()`
+- `cmd/` -- Cobra command definitions (root, search, analyze, stats, tail, version)
+- `internal/config/` -- Shared domain types (Config, LogEntry, LogLevel)
+- `internal/parser/` -- Multi-format log parser (JSON, syslog, Apache, generic)
+- `internal/analyzer/` -- Stats computation, filtering, pattern detection
+- `internal/output/` -- Formatted output (text, JSON, table)
+- `docs/` -- DESIGN.md (architecture) and ROADMAP.md (phases)
+- `tmp/` -- Sample log files for manual testing
 
-### Code Quality
+## Code Conventions
 
-- `make format` - Format code (ruff + isort)
-- `make lint` - Check code quality (ruff)
-- `make type-check` - Type checking (pyright)
-- `make check` - Run lint + type-check
-- `make fix` - Auto-fix linting issues and format
-- `make all` - Format, check, and test
+- **Packages:** Lowercase, single-word names (`config`, `parser`, `analyzer`, `output`)
+- **Exported types:** PascalCase (`LogEntry`, `FilterOptions`, `Stats`)
+- **Unexported functions:** camelCase (`parseLine`, `tryParseJSON`)
+- **Constants:** PascalCase with prefix grouping (`LevelDebug`, `LevelInfo`, `FormatJSON`)
+- **Constructors:** Use `New()` pattern (`parser.New()`, `analyzer.New()`, `output.New()`)
+- **Errors:** Return errors, never panic. Use `RunE` for Cobra commands.
+- **Documentation:** Every package must have a doc comment (`// Package config provides...`)
+- **Internal packages:** All business logic goes in `internal/` (unexportable by convention)
+- **One concern per file:** Each file handles a single responsibility
 
-### Development
+## Architecture
 
-- `make run` or `uv run cyro` - Run the application
-- `make build` - Build the package
-- `make clean` - Clean build artifacts and cache
+- Single-binary CLI using Cobra + Viper
+- Configuration priority: CLI flags > env vars (`CYRO_` prefix) > config file (`~/.cyro.yaml`) > defaults
+- Pipeline: CLI Interface -> Parse -> Pre-Process -> (future: LLM Layer) -> Output
+- Flags are bound to Viper via `viper.BindPFlag()` for unified config
+- Version info injected at build time via ldflags
 
-## Architecture Overview
+## Development Status
 
-### Core System Design
-
-Cyro is built on **PydanticAI** which provides:
-
-- Type-safe agent creation with dependency injection
-- Built-in conversation management and streaming
-- Automatic tool registration and schema generation
-- Support for OpenAI, Anthropic, Gemini, Vertex AI, Groq
-
-### Key Components
-
-**CLI Layer (Typer + Rich)**
-
-- `cyro` - Interactive terminal UI
-- `cyro "prompt"` - Direct task execution (auto-routes to best agent)
-- `cyro --agent <name> "prompt"` - Explicit agent selection
-- `cyro chat` - Conversational mode
-- `cyro agent` - Agent management (list, use, etc.)
-- `cyro config` - Configuration management
-
-**Subagent Framework**
-
-- Markdown-based agent definitions in `agents/` directory
-- Manager agent automatically routes tasks to best subagent based on descriptions
-- Dynamic loading and task delegation (automatic and explicit)
-- Tool permissions per agent type
-- Specialized contexts (code review, debugging, testing)
-
-**Model Providers**
-
-- Default: Custom Ollama provider (local, privacy-first)
-- Built-in: OpenAI, Anthropic, Gemini, Vertex AI, Groq via PydanticAI
-- Configuration: TOML-based profiles
-
-**Tools System**
-
-- Built on PydanticAI's `@agent.tool` decorators
-- Automatic schema generation and validation
-- Third-party integration: LangChain, ACI.dev, MCP servers
-- Custom tools: filesystem, code execution, Git, web search
-
-### Module Structure
-
-```
-src/cyro/
-├── cli/           # Typer commands (main, chat, agent, config)
-├── agents/        # Subagent system (base, loader, manager, delegation)
-├── models/        # Custom Ollama provider + profile management
-├── tools/         # Custom tools using @agent.tool decorators
-├── config/        # Settings, security policies, TOML config
-└── utils/         # Console utilities, errors, auth
-```
-
-## Agent Configuration Format
-
-Subagents are defined in markdown files:
-
-```markdown
-# Agent Name: Code Reviewer
-
-## Description
-
-Specialized agent for code review and quality assurance. Reviews code for bugs,
-performance issues, maintainability, and coding standards compliance.
-
-## Best For
-
-- Code quality reviews
-- Bug detection and analysis
-- Performance optimization suggestions
-- Coding standards enforcement
-- Refactoring recommendations
-
-## System Prompt
-
-You are an expert code reviewer...
-
-## Tools
-
-- filesystem
-- git
+- Active branch: `rewrite-log_analysis` (Go rewrite from original Python codebase)
+- Phase 1: Local CLI foundation -- commands scaffolded, `RunE` functions contain TODO stubs
+- Internal packages (`parser`, `analyzer`, `output`) have working implementations
+- No tests exist yet -- test files need to be created
+- No CI/CD pipeline yet
+- No `.golangci.yml` config yet (referenced by Makefile but not created)
 
 ## Dependencies
 
-- User context
-- Project context
+Only two direct dependencies -- keep it minimal:
 
-## Output Type
+- `github.com/spf13/cobra` -- CLI framework
+- `github.com/spf13/viper` -- Configuration management
 
-ReviewResult
+## Testing Guidelines
 
-## Scope
-
-project
-```
-
-## Privacy & Security Principles
-
-1. **Privacy-First**: No user data persistence, all processing in-memory only
-2. **Local-First**: Default to Ollama to minimize external data sharing
-3. **Zero Data Retention**: No conversation logging by default
-4. **Directory Isolation**: Controlled file system access and command execution
-5. **Session-Only Context**: Conversation state management without persistence
-
-## Development Notes
-
-- **Python 3.13+** required
-- **UV package manager** for dependency management
-- **PydanticAI integration**: Extend Agent classes, use @agent.tool decorators
-- **Tool development**: All tools should use PydanticAI's built-in validation and retry mechanisms
-- **Markdown parsing**: Agent configurations are parsed from markdown files in `agents/`
-- **Type safety**: Leverage PydanticAI's generics for dependencies and outputs
-- **Provider system**: Custom Ollama provider extends PydanticAI's model abstraction
-- Use absolute import, not relative
-- All import statements should be at the top level unless absolutely needed
+- Use standard Go testing (`go test`)
+- Tests run with `-race` and `-count=1` (no caching)
+- Place test files alongside source: `internal/parser/parser_test.go`
+- Use table-driven tests where applicable
+- Run `make test` before committing
