@@ -64,7 +64,6 @@ def create_agent_toolset(
         "task_management": create_task_management_toolset,
     }
 
-    # TODO: Make these match the types from above
     # Conditionally available tools
     if CODE_TOOLS_AVAILABLE:
         tool_factories["code"] = create_code_toolset

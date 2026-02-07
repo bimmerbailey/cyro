@@ -22,17 +22,6 @@ class SecurityConfig(BaseModel):
     max_file_size: str = "10MB"
 
 
-class MCPConfig(BaseModel):
-    """MCP (Model Context Protocol) configuration."""
-
-    enabled: bool = True
-    python_server_enabled: bool = True
-    python_server_transport: str = "stdio"  # stdio, streamable_http, sse
-    python_server_url: str = "http://localhost:8000/mcp"  # for http/sse transports
-    deno_executable: str = "deno"  # path to deno executable
-    tool_prefix: str = "mcp_"  # prefix for MCP tools to avoid conflicts
-
-
 class CyroConfig(BaseSettings):
     """Main configuration model for Cyro with support for TOML files and environment variables."""
 
@@ -53,7 +42,7 @@ class CyroConfig(BaseSettings):
     # TODO: Do we need host,port, and base_url?
     host: str = "localhost"
     port: int = 11434
-    model: str = "qwen2.5-coder"
+    model: str = "qwen3:8b"
     timeout: int = 30
     base_url: AnyHttpUrl = Field(
         default=cast("AnyHttpUrl", "http://localhost:11434/v1")
@@ -61,9 +50,6 @@ class CyroConfig(BaseSettings):
 
     # Security configuration
     security: SecurityConfig = SecurityConfig()
-
-    # MCP configuration
-    mcp: MCPConfig = MCPConfig()
 
     # UI settings
     theme: str = "cyro"

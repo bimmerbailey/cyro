@@ -172,8 +172,7 @@ class CyroAgent:
 
         # Add tools - all agents get all available tools by default
         try:
-            from cyro.tools.factory import (get_toolset_for_agent_type,
-                                            list_available_tools)
+            from cyro.tools.factory import list_available_tools
 
             if config.tools:
                 # Use specific tools if specified

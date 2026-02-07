@@ -11,7 +11,7 @@ Security: All shell commands include safety controls, timeouts, and approval wor
 import subprocess
 import time
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent
