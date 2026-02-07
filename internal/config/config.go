@@ -1,7 +1,11 @@
 // Package config provides configuration types and helpers for cyro.
 package config
 
-import "time"
+import (
+	"encoding/json"
+	"strings"
+	"time"
+)
 
 // Config holds the application-wide configuration.
 type Config struct {
@@ -41,18 +45,33 @@ func (l LogLevel) String() string {
 	}
 }
 
+// MarshalJSON implements json.Marshaler for LogLevel.
+func (l LogLevel) MarshalJSON() ([]byte, error) {
+	return json.Marshal(l.String())
+}
+
+// UnmarshalJSON implements json.Unmarshaler for LogLevel.
+func (l *LogLevel) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	*l = ParseLevel(s)
+	return nil
+}
+
 // ParseLevel converts a string to a LogLevel.
 func ParseLevel(s string) LogLevel {
-	switch s {
-	case "debug", "DEBUG", "dbg":
+	switch strings.ToLower(s) {
+	case "debug", "dbg":
 		return LevelDebug
-	case "info", "INFO", "inf":
+	case "info", "inf":
 		return LevelInfo
-	case "warn", "WARN", "warning", "WARNING":
+	case "warn", "warning":
 		return LevelWarn
-	case "error", "ERROR", "err":
+	case "error", "err":
 		return LevelError
-	case "fatal", "FATAL", "critical", "CRITICAL":
+	case "fatal", "critical", "crit":
 		return LevelFatal
 	default:
 		return LevelUnknown
@@ -61,11 +80,11 @@ func ParseLevel(s string) LogLevel {
 
 // LogEntry represents a single parsed log line.
 type LogEntry struct {
-	Raw       string            `json:"raw"`
-	Timestamp time.Time         `json:"timestamp,omitempty"`
-	Level     LogLevel          `json:"level"`
-	Message   string            `json:"message"`
-	Source    string            `json:"source,omitempty"`
-	Fields    map[string]string `json:"fields,omitempty"`
-	Line      int               `json:"line"`
+	Raw       string                 `json:"raw"`
+	Timestamp time.Time              `json:"timestamp,omitempty"`
+	Level     LogLevel               `json:"level"`
+	Message   string                 `json:"message"`
+	Source    string                 `json:"source,omitempty"`
+	Fields    map[string]interface{} `json:"fields,omitempty"`
+	Line      int                    `json:"line"`
 }
