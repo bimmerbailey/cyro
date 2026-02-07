@@ -13,11 +13,11 @@ product at every stage.
 
 ### 1.1 Core Log Parsing (existing scaffolding in `internal/parser`)
 
-- [ ] Finalize multi-format detection: JSON, syslog, Apache/Nginx, generic plaintext
-- [ ] Robust timestamp extraction across all configured formats
-- [ ] Level extraction for structured and unstructured logs
-- [ ] Field extraction for JSON logs (key-value pairs into `LogEntry.Fields`)
-- [ ] Streaming parser that handles files of any size (line-by-line, never loads full file)
+- [x] Finalize multi-format detection: JSON, syslog, Apache/Nginx, generic plaintext
+- [x] Robust timestamp extraction across all configured formats
+- [x] Level extraction for structured and unstructured logs
+- [x] Field extraction for JSON logs (key-value pairs into `LogEntry.Fields`)
+- [x] Streaming parser that handles files of any size (line-by-line, never loads full file)
 
 ### 1.2 Search Command (`cmd/search.go`)
 
