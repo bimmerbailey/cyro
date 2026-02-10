@@ -73,14 +73,19 @@ At this point Cyro is a useful `grep`/`jq`-like tool for logs — no AI required
 
 ### 2.1 LLM Provider Interface (`internal/llm/`)
 
-- [ ] Define `Provider` interface: `Chat()`, `ChatStream()`, `Embed()`
-- [ ] Define shared types: `Message`, `ChatOptions`, `Response`, `StreamEvent`
-- [ ] Ollama provider implementation using `github.com/ollama/ollama/api`
-- [ ] Streaming support (tokens printed as they arrive)
-- [ ] Connection health check (`Heartbeat()`)
-- [ ] Model availability check (is the required model pulled?)
-- [ ] Configurable endpoint via Viper (`llm.ollama.host`)
-- [ ] Configurable model via Viper (`llm.ollama.model`, default `llama3.2`)
+- [x] Define `Provider` interface: `Chat()`, `ChatStream()` (Note: `Embed()` deferred to Phase 3)
+- [x] Define shared types: `Message`, `ChatOptions`, `Response`, `StreamEvent`
+- [x] Custom error types: `ErrProviderUnavailable`, `ErrModelNotFound`, `ErrInvalidResponse`, `ErrStreamClosed`, `ErrContextCanceled`
+- [x] Ollama provider implementation using `github.com/ollama/ollama/api`
+- [x] Streaming support (tokens printed as they arrive) via Go channels
+- [x] Connection health check (`Heartbeat()`)
+- [x] Model availability check (is the required model pulled?)
+- [x] Configurable endpoint via Viper (`llm.ollama.host`)
+- [x] Configurable model via Viper (`llm.ollama.model`, default `llama3.2`)
+- [x] `log/slog` integration for structured logging
+- [x] Comprehensive unit tests (21 tests, all passing with race detection)
+- [x] Package documentation with usage examples
+- [x] Example configuration file (`.cyro.example.yaml`)
 
 ### 2.2 Pre-Processing Pipeline (`internal/preprocess/`)
 
@@ -122,7 +127,7 @@ At this point Cyro is a useful `grep`/`jq`-like tool for logs — no AI required
 
 ### 2.6 Configuration
 
-- [ ] `~/.cyro.yaml` schema for LLM settings:
+- [x] `~/.cyro.yaml` schema for LLM settings:
   ```yaml
   llm:
     provider: ollama          # ollama | openai | anthropic
@@ -139,7 +144,7 @@ At this point Cyro is a useful `grep`/`jq`-like tool for logs — no AI required
       - email
       - api_key
   ```
-- [ ] Environment variable overrides (`CYRO_LLM_PROVIDER`, etc.)
+- [x] Environment variable overrides (`CYRO_PROVIDER`, `CYRO_OLLAMA_HOST`, `CYRO_OLLAMA_MODEL`, etc.)
 
 ### Milestone: `v0.2.0`
 

@@ -9,10 +9,26 @@ import (
 
 // Config holds the application-wide configuration.
 type Config struct {
-	Format           string   `mapstructure:"format"`
-	Verbose          bool     `mapstructure:"verbose"`
-	TimestampFormats []string `mapstructure:"timestamp_formats"`
-	LogDir           string   `mapstructure:"log_dir"`
+	Format           string    `mapstructure:"format"`
+	Verbose          bool      `mapstructure:"verbose"`
+	TimestampFormats []string  `mapstructure:"timestamp_formats"`
+	LogDir           string    `mapstructure:"log_dir"`
+	LLM              LLMConfig `mapstructure:"llm"`
+}
+
+// LLMConfig holds configuration for LLM providers.
+type LLMConfig struct {
+	Provider    string       `mapstructure:"provider"`
+	Temperature float32      `mapstructure:"temperature"`
+	TokenBudget int          `mapstructure:"token_budget"`
+	Ollama      OllamaConfig `mapstructure:"ollama"`
+}
+
+// OllamaConfig holds Ollama-specific configuration.
+type OllamaConfig struct {
+	Host           string `mapstructure:"host"`
+	Model          string `mapstructure:"model"`
+	EmbeddingModel string `mapstructure:"embedding_model"`
 }
 
 // LogLevel represents a standard log severity level.

@@ -72,6 +72,14 @@ func initConfig() {
 	})
 	viper.SetDefault("log_dir", filepath.Join(".", "logs"))
 
+	// LLM defaults (Phase 2)
+	viper.SetDefault("llm.provider", "ollama")
+	viper.SetDefault("llm.temperature", 0.0)
+	viper.SetDefault("llm.token_budget", 8000)
+	viper.SetDefault("llm.ollama.host", "http://localhost:11434")
+	viper.SetDefault("llm.ollama.model", "llama3.2")
+	viper.SetDefault("llm.ollama.embedding_model", "nomic-embed-text")
+
 	if err := viper.ReadInConfig(); err == nil {
 		if viper.GetBool("verbose") {
 			fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())

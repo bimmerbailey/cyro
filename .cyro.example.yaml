@@ -1,0 +1,54 @@
+# Cyro Configuration Example
+# Place this file at ~/.cyro.yaml to configure default behavior
+
+# Output format (text, json, table)
+format: text
+
+# Enable verbose output
+verbose: false
+
+# Timestamp formats to try when parsing logs
+timestamp_formats:
+  - "2006-01-02T15:04:05Z07:00"  # RFC3339
+  - "2006-01-02 15:04:05"        # Common datetime
+  - "Jan 02 15:04:05"            # Syslog
+  - "02/Jan/2006:15:04:05 -0700" # Apache/Nginx
+
+# Default log directory
+log_dir: ./logs
+
+# LLM Configuration (Phase 2+)
+llm:
+  # Provider type: ollama, openai, anthropic (only ollama supported currently)
+  provider: ollama
+  
+  # Temperature for LLM responses (0 = deterministic, 2 = very random)
+  # For log analysis, 0 is recommended for consistent output
+  temperature: 0
+  
+  # Maximum tokens to use in prompts (token budget enforcement)
+  token_budget: 8000
+  
+  # Ollama-specific configuration
+  ollama:
+    # Ollama API endpoint (can also set via OLLAMA_HOST env var)
+    host: http://localhost:11434
+    
+    # Default model for chat/analysis
+    # Run 'ollama pull llama3.2' to download the model first
+    model: llama3.2
+    
+    # Model for embeddings (used in Phase 3 for RAG functionality)
+    embedding_model: nomic-embed-text
+
+# Environment Variable Overrides:
+# All settings can be overridden with CYRO_* prefixed environment variables:
+#
+#   CYRO_FORMAT=json
+#   CYRO_VERBOSE=true
+#   CYRO_PROVIDER=ollama
+#   CYRO_OLLAMA_HOST=http://remote-ollama:11434
+#   CYRO_OLLAMA_MODEL=llama3.2
+#   CYRO_OLLAMA_EMBEDDING_MODEL=nomic-embed-text
+#
+# Note: Nested keys use underscores, e.g., llm.ollama.host → CYRO_OLLAMA_HOST
