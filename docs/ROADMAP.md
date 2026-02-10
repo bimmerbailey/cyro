@@ -59,13 +59,6 @@ product at every stage.
 - [x] Color-coded severity when output is a TTY
 - [x] No color when piped (detect `os.Stdout` is not a terminal)
 
-### 1.7 Build & Distribution
-
-- [ ] Version injection via ldflags (`make build`)
-- [ ] Shell completion generation (bash, zsh, fish, powershell — Cobra built-in)
-- [ ] Cross-compilation targets (Linux amd64/arm64, macOS amd64/arm64)
-- [ ] Goreleaser config for release automation
-
 ### Milestone: `v0.1.0`
 
 At this point Cyro is a useful `grep`/`jq`-like tool for logs — no AI required. All subsequent phases are additive.
