@@ -46,18 +46,18 @@ product at every stage.
 
 ### 1.5 Tail Command (`cmd/tail.go`)
 
-- [ ] Follow mode with file watching (fsnotify or polling)
-- [ ] Live filtering by level and pattern
-- [ ] Initial N lines display
-- [ ] Graceful shutdown on SIGINT
+- [x] Follow mode with file watching (fsnotify or polling)
+- [x] Live filtering by level and pattern
+- [x] Initial N lines display
+- [x] Graceful shutdown on SIGINT
 
 ### 1.6 Output Formatting (`internal/output`)
 
-- [ ] Text output (raw log lines, default)
-- [ ] JSON output (structured, pipeable)
-- [ ] Table output (tabwriter with aligned columns)
-- [ ] Color-coded severity when output is a TTY
-- [ ] No color when piped (detect `os.Stdout` is not a terminal)
+- [x] Text output (raw log lines, default)
+- [x] JSON output (structured, pipeable)
+- [x] Table output (tabwriter with aligned columns)
+- [x] Color-coded severity when output is a TTY
+- [x] No color when piped (detect `os.Stdout` is not a terminal)
 
 ### 1.7 Build & Distribution
 
