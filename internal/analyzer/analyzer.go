@@ -3,6 +3,7 @@
 package analyzer
 
 import (
+	"fmt"
 	"regexp"
 	"sort"
 	"time"
@@ -24,6 +25,34 @@ type Stats struct {
 type MessageCount struct {
 	Message string `json:"message"`
 	Count   int    `json:"count"`
+}
+
+// GroupedResult represents entries grouped by a field value.
+type GroupedResult struct {
+	Key     string  `json:"key"`
+	Count   int     `json:"count"`
+	Percent float64 `json:"percent"`
+}
+
+// TimeWindowStats holds statistics for a time window.
+type TimeWindowStats struct {
+	Start         time.Time               `json:"start"`
+	End           time.Time               `json:"end"`
+	Count         int                     `json:"count"`
+	LevelCounts   map[config.LogLevel]int `json:"level_counts"`
+	ErrorCount    int                     `json:"error_count"`
+	ErrorPercent  float64                 `json:"error_percent"`
+	ChangePercent float64                 `json:"change_percent"` // Change from previous window
+}
+
+// AnalysisResult contains the full analysis output.
+type AnalysisResult struct {
+	TotalLines  int               `json:"total_lines"`
+	GroupBy     string            `json:"group_by"`
+	Groups      []GroupedResult   `json:"groups"`
+	TimeWindows []TimeWindowStats `json:"time_windows,omitempty"`
+	Pattern     string            `json:"pattern,omitempty"`
+	FilePath    string            `json:"file_path,omitempty"`
 }
 
 // Analyzer performs analysis on parsed log entries.
@@ -144,4 +173,126 @@ func topMessages(counts map[string]int, n int) []MessageCount {
 	}
 
 	return msgs
+}
+
+// GroupBy groups entries by a specific field and returns the top N groups.
+// Supported fields: "level", "message", "source".
+func (a *Analyzer) GroupBy(entries []config.LogEntry, field string, topN int) ([]GroupedResult, error) {
+	if len(entries) == 0 {
+		return nil, nil
+	}
+
+	groups := make(map[string]int)
+
+	for _, e := range entries {
+		var key string
+		switch field {
+		case "level":
+			key = e.Level.String()
+		case "message":
+			key = e.Message
+		case "source":
+			key = e.Source
+		default:
+			return nil, fmt.Errorf("unsupported group-by field: %s (must be 'level', 'message', or 'source')", field)
+		}
+
+		if key == "" && field == "source" {
+			key = "(unknown)"
+		}
+
+		groups[key]++
+	}
+
+	// Convert to slice and sort
+	result := make([]GroupedResult, 0, len(groups))
+	total := len(entries)
+	for key, count := range groups {
+		result = append(result, GroupedResult{
+			Key:     key,
+			Count:   count,
+			Percent: float64(count) * 100 / float64(total),
+		})
+	}
+
+	// Sort by count descending
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Count > result[j].Count
+	})
+
+	// Return top N
+	if len(result) > topN {
+		result = result[:topN]
+	}
+
+	return result, nil
+}
+
+// AnalyzeByWindow splits entries into time windows and calculates statistics.
+func (a *Analyzer) AnalyzeByWindow(entries []config.LogEntry, window time.Duration) []TimeWindowStats {
+	if len(entries) == 0 {
+		return nil
+	}
+
+	// Find time range
+	var minTime, maxTime time.Time
+	for _, e := range entries {
+		if !e.Timestamp.IsZero() {
+			if minTime.IsZero() || e.Timestamp.Before(minTime) {
+				minTime = e.Timestamp
+			}
+			if maxTime.IsZero() || e.Timestamp.After(maxTime) {
+				maxTime = e.Timestamp
+			}
+		}
+	}
+
+	if minTime.IsZero() || maxTime.IsZero() {
+		return nil
+	}
+
+	// Align to window boundaries
+	windowStart := minTime.Truncate(window)
+	var windows []TimeWindowStats
+
+	for current := windowStart; current.Before(maxTime) || current.Equal(maxTime); current = current.Add(window) {
+		windows = append(windows, TimeWindowStats{
+			Start:       current,
+			End:         current.Add(window),
+			LevelCounts: make(map[config.LogLevel]int),
+		})
+	}
+
+	// Assign entries to windows
+	for _, e := range entries {
+		if e.Timestamp.IsZero() {
+			continue
+		}
+
+		// Find the window this entry belongs to
+		windowIdx := int(e.Timestamp.Sub(windowStart) / window)
+		if windowIdx >= 0 && windowIdx < len(windows) {
+			windows[windowIdx].Count++
+			windows[windowIdx].LevelCounts[e.Level]++
+			if e.Level >= config.LevelError {
+				windows[windowIdx].ErrorCount++
+			}
+		}
+	}
+
+	// Calculate error percentages and changes
+	for i := range windows {
+		if windows[i].Count > 0 {
+			windows[i].ErrorPercent = float64(windows[i].ErrorCount) * 100 / float64(windows[i].Count)
+		}
+
+		// Calculate change from previous window
+		if i > 0 {
+			if windows[i-1].Count > 0 {
+				windows[i].ChangePercent = float64(windows[i].Count-windows[i-1].Count) * 100 / float64(windows[i-1].Count)
+			}
+		}
+	}
+
+	return windows
 }

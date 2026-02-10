@@ -44,6 +44,12 @@ func parseAbsoluteTime(input string) (time.Time, error) {
 	return time.Time{}, fmt.Errorf("invalid absolute time: %s", input)
 }
 
+// ParseDuration parses a duration string supporting standard Go durations and extended units (d for days).
+// Examples: "5m", "1h", "1h30m", "2d"
+func ParseDuration(s string) (time.Duration, error) {
+	return parseRelativeDuration(s)
+}
+
 func parseRelativeDuration(input string) (time.Duration, error) {
 	if d, err := time.ParseDuration(input); err == nil {
 		return d, nil

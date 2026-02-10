@@ -39,10 +39,10 @@ product at every stage.
 
 ### 1.4 Analyze Command (`cmd/analyze.go`)
 
-- [ ] Group-by support (level, message, source)
-- [ ] Top N results with frequency counts
-- [ ] Pattern-focused analysis (`--pattern`)
-- [ ] Time window trend detection (`--window`)
+- [x] Group-by support (level, message, source)
+- [x] Top N results with frequency counts
+- [x] Pattern-focused analysis (`--pattern`)
+- [x] Time window trend detection (`--window`)
 
 ### 1.5 Tail Command (`cmd/tail.go`)
 
