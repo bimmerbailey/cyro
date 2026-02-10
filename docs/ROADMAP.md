@@ -31,11 +31,11 @@ product at every stage.
 
 ### 1.3 Stats Command (`cmd/stats.go`)
 
-- [ ] Line counts by log level
-- [ ] Time range (first and last entry)
-- [ ] Error rate calculation
-- [ ] Top N most frequent messages
-- [ ] Output in text, JSON, and table formats
+- [x] Line counts by log level
+- [x] Time range (first and last entry)
+- [x] Error rate calculation
+- [x] Top N most frequent messages
+- [x] Output in text, JSON, and table formats
 
 ### 1.4 Analyze Command (`cmd/analyze.go`)
 
