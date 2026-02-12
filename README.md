@@ -85,6 +85,8 @@ Run `cyro <command> --help` for details on each command.
 Cyro reads configuration from `~/.cyro.yaml`, the current directory, or a path specified with `--config`. Environment
 variables with the `CYRO_` prefix are also supported.
 
+### Basic Configuration
+
 ```yaml
 # ~/.cyro.yaml
 format: text
@@ -95,6 +97,103 @@ timestamp_formats:
   - "Jan 02 15:04:05"
   - "02/Jan/2006:15:04:05 -0700"
 ```
+
+### LLM Provider Configuration
+
+Cyro supports multiple LLM providers for AI-powered log analysis:
+
+#### Ollama (Local - Default)
+
+Ollama runs models locally on your machine. No API key required.
+
+**Install:** [ollama.com](https://ollama.com)
+
+```yaml
+# ~/.cyro.yaml
+llm:
+  provider: ollama
+  temperature: 0.0
+  ollama:
+    host: http://localhost:11434
+    model: llama3.2
+    keep_alive: 5m
+    num_ctx: 4096
+```
+
+```bash
+# Pull a model first
+ollama pull llama3.2
+```
+
+#### OpenAI (Cloud)
+
+OpenAI provides cloud-hosted models like GPT-4.
+
+```yaml
+# ~/.cyro.yaml
+llm:
+  provider: openai
+  temperature: 0.0
+  openai:
+    model: gpt-4o
+```
+
+Set API key via environment (recommended):
+```bash
+export OPENAI_API_KEY=sk-proj-...
+cyro chat /var/log/app.log
+```
+
+Or add to config (not recommended for security):
+```yaml
+openai:
+  api_key: sk-proj-...
+```
+
+#### Anthropic/Claude (Cloud)
+
+Anthropic provides Claude models via API.
+
+```yaml
+# ~/.cyro.yaml
+llm:
+  provider: anthropic
+  temperature: 0.0
+  anthropic:
+    model: claude-3-7-sonnet-20250219
+```
+
+Set API key:
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+cyro chat /var/log/app.log
+```
+
+### Switching Providers
+
+```bash
+# Default (Ollama)
+cyro chat /var/log/app.log
+
+# Override via environment
+CYRO_LLM_PROVIDER=openai cyro chat /var/log/app.log
+CYRO_LLM_PROVIDER=anthropic cyro chat /var/log/app.log
+```
+
+### Configuration Reference
+
+| Config Path                | Environment Variable         | Default                          |
+|----------------------------|------------------------------|----------------------------------|
+| `llm.provider`             | `CYRO_LLM_PROVIDER`          | `ollama`                         |
+| `llm.temperature`          | `CYRO_LLM_TEMPERATURE`       | `0.0`                            |
+| `llm.max_tokens`           | `CYRO_LLM_MAX_TOKENS`        | `0` (provider default)           |
+| `llm.ollama.host`          | `CYRO_LLM_OLLAMA_HOST`       | `http://localhost:11434`         |
+| `llm.ollama.model`         | `CYRO_LLM_OLLAMA_MODEL`      | `llama3.2`                       |
+| `llm.openai.api_key`       | `OPENAI_API_KEY`             | (none - required for OpenAI)     |
+| `llm.openai.model`         | `CYRO_LLM_OPENAI_MODEL`      | `gpt-4`                          |
+| `llm.openai.base_url`      | `CYRO_LLM_OPENAI_BASE_URL`   | `https://api.openai.com/v1`      |
+| `llm.anthropic.api_key`    | `ANTHROPIC_API_KEY`          | (none - required for Anthropic)  |
+| `llm.anthropic.model`      | `CYRO_LLM_ANTHROPIC_MODEL`   | `claude-3-7-sonnet-20250219`     |
 
 ## Project Structure
 

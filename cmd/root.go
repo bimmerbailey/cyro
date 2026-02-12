@@ -72,6 +72,28 @@ func initConfig() {
 	})
 	viper.SetDefault("log_dir", filepath.Join(".", "logs"))
 
+	// LLM provider selection
+	viper.SetDefault("llm.provider", "ollama")
+
+	// Global LLM settings
+	viper.SetDefault("llm.temperature", 0.0)
+	viper.SetDefault("llm.max_tokens", 0) // 0 = provider default
+
+	// Ollama defaults
+	viper.SetDefault("llm.ollama.host", "http://localhost:11434")
+	viper.SetDefault("llm.ollama.model", "llama3.2")
+	viper.SetDefault("llm.ollama.keep_alive", "5m")
+	viper.SetDefault("llm.ollama.num_ctx", 4096)
+	viper.SetDefault("llm.ollama.num_gpu", 0)
+
+	// OpenAI defaults (api_key from OPENAI_API_KEY env var)
+	viper.SetDefault("llm.openai.model", "gpt-4")
+	viper.SetDefault("llm.openai.base_url", "https://api.openai.com/v1")
+	viper.SetDefault("llm.openai.org_id", "")
+
+	// Anthropic defaults (api_key from ANTHROPIC_API_KEY env var)
+	viper.SetDefault("llm.anthropic.model", "claude-3-7-sonnet-20250219")
+
 	if err := viper.ReadInConfig(); err == nil {
 		if viper.GetBool("verbose") {
 			fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())

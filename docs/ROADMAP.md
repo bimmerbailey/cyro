@@ -73,14 +73,23 @@ At this point Cyro is a useful `grep`/`jq`-like tool for logs — no AI required
 
 ### 2.1 LLM Provider Interface (`internal/llm/`)
 
-- [ ] Define `Provider` interface: `Chat()`, `ChatStream()`, `Embed()`
-- [ ] Define shared types: `Message`, `ChatOptions`, `Response`, `StreamEvent`
-- [ ] Ollama provider implementation using `github.com/ollama/ollama/api`
-- [ ] Streaming support (tokens printed as they arrive)
-- [ ] Connection health check (`Heartbeat()`)
-- [ ] Model availability check (is the required model pulled?)
-- [ ] Configurable endpoint via Viper (`llm.ollama.host`)
-- [ ] Configurable model via Viper (`llm.ollama.model`, default `llama3.2`)
+- [x] Define `Provider` interface: `Chat()`, `ChatStream()`, `Heartbeat()`, `ModelAvailable()` (Note: `Embed()` deferred to Phase 3)
+- [x] Define shared types: `Message`, `ChatOptions`, `Response`, `StreamEvent`
+- [x] Custom error types: `ErrProviderUnavailable`, `ErrModelNotFound`, `ErrInvalidResponse`, `ErrStreamClosed`, `ErrContextCanceled`
+- [x] Multi-provider architecture using `github.com/tmc/langchaingo`
+- [x] Ollama provider implementation with full configuration support
+- [x] OpenAI provider implementation with native API key resolution
+- [x] Anthropic provider implementation with native API key resolution
+- [x] Streaming support (tokens printed as they arrive) via Go channels
+- [x] Connection health check (`Heartbeat()`) - provider-specific implementations
+- [x] Model availability check (is the required model pulled?) - Ollama only
+- [x] Configurable via Viper with provider-specific sections
+- [x] Native environment variable support (OPENAI_API_KEY, ANTHROPIC_API_KEY)
+- [x] API key resolution: config file → native env var → clear error message
+- [x] `log/slog` integration for structured logging
+- [x] Comprehensive unit tests for all 3 providers (all passing with race detection)
+- [x] Package documentation with usage examples and provider switching
+- [x] Updated documentation (README, DESIGN, CLAUDE) with multi-provider configuration
 
 ### 2.2 Pre-Processing Pipeline (`internal/preprocess/`)
 
@@ -122,16 +131,25 @@ At this point Cyro is a useful `grep`/`jq`-like tool for logs — no AI required
 
 ### 2.6 Configuration
 
-- [ ] `~/.cyro.yaml` schema for LLM settings:
+- [x] `~/.cyro.yaml` schema for LLM settings with multi-provider support:
   ```yaml
   llm:
     provider: ollama          # ollama | openai | anthropic
+    temperature: 0.0
+    max_tokens: 0             # 0 = provider default
     ollama:
       host: http://localhost:11434
       model: llama3.2
-      embedding_model: nomic-embed-text
-    temperature: 0
-    token_budget: 8000
+      keep_alive: 5m
+      num_ctx: 4096
+      num_gpu: 0
+    openai:
+      model: gpt-4
+      base_url: https://api.openai.com/v1
+      # api_key read from OPENAI_API_KEY
+    anthropic:
+      model: claude-3-7-sonnet-20250219
+      # api_key read from ANTHROPIC_API_KEY
   redaction:
     enabled: true
     patterns:
@@ -139,7 +157,8 @@ At this point Cyro is a useful `grep`/`jq`-like tool for logs — no AI required
       - email
       - api_key
   ```
-- [ ] Environment variable overrides (`CYRO_LLM_PROVIDER`, etc.)
+- [x] Environment variable overrides (`CYRO_LLM_PROVIDER`, `CYRO_LLM_OLLAMA_HOST`, `CYRO_LLM_OLLAMA_MODEL`, etc.)
+- [x] Native API key environment variables (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`)
 
 ### Milestone: `v0.2.0`
 
@@ -211,10 +230,12 @@ specific timestamps and errors.
 
 ### 4.1 Additional LLM Providers
 
-- [ ] OpenAI provider (`github.com/openai/openai-go/v3`)
-- [ ] Anthropic provider (`github.com/anthropics/anthropic-sdk-go`)
-- [ ] Provider selection via config/flag (`--provider openai`)
-- [ ] API key management via env vars (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`)
+- [x] OpenAI provider via langchaingo
+- [x] Anthropic provider via langchaingo
+- [x] Provider selection via config (`llm.provider: openai|anthropic`)
+- [x] API key management via native env vars (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`)
+- [x] Config file fallback for API keys (not recommended for security)
+- [ ] Provider selection via CLI flag (`--provider openai`)
 - [ ] Prompt caching support (Anthropic — 16-30% cost savings)
 
 ### 4.2 Anomaly Detection Command (`cmd/anomalies.go` — new)

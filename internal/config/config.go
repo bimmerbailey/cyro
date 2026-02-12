@@ -9,10 +9,49 @@ import (
 
 // Config holds the application-wide configuration.
 type Config struct {
-	Format           string   `mapstructure:"format"`
-	Verbose          bool     `mapstructure:"verbose"`
-	TimestampFormats []string `mapstructure:"timestamp_formats"`
-	LogDir           string   `mapstructure:"log_dir"`
+	Format           string    `mapstructure:"format"`
+	Verbose          bool      `mapstructure:"verbose"`
+	TimestampFormats []string  `mapstructure:"timestamp_formats"`
+	LogDir           string    `mapstructure:"log_dir"`
+	LLM              LLMConfig `mapstructure:"llm"`
+}
+
+// LLMConfig holds configuration for LLM providers.
+type LLMConfig struct {
+	// Provider selects which LLM to use: "ollama", "openai", "anthropic"
+	Provider string `mapstructure:"provider"`
+
+	// Global settings applied to all providers
+	Temperature float32 `mapstructure:"temperature"`
+	MaxTokens   int     `mapstructure:"max_tokens"`
+
+	// Provider-specific configuration
+	Ollama    OllamaConfig    `mapstructure:"ollama"`
+	OpenAI    OpenAIConfig    `mapstructure:"openai"`
+	Anthropic AnthropicConfig `mapstructure:"anthropic"`
+}
+
+// OllamaConfig holds Ollama-specific settings.
+type OllamaConfig struct {
+	Host      string `mapstructure:"host"`       // API endpoint
+	Model     string `mapstructure:"model"`      // Default model name
+	KeepAlive string `mapstructure:"keep_alive"` // e.g., "5m"
+	NumCtx    int    `mapstructure:"num_ctx"`    // Context window size
+	NumGPU    int    `mapstructure:"num_gpu"`    // GPU layers to offload
+}
+
+// OpenAIConfig holds OpenAI-specific settings.
+type OpenAIConfig struct {
+	APIKey  string `mapstructure:"api_key"`  // Optional: read from OPENAI_API_KEY if empty
+	Model   string `mapstructure:"model"`    // e.g., "gpt-4o", "gpt-4"
+	BaseURL string `mapstructure:"base_url"` // Optional: for compatible endpoints
+	OrgID   string `mapstructure:"org_id"`   // Optional: organization ID
+}
+
+// AnthropicConfig holds Anthropic/Claude-specific settings.
+type AnthropicConfig struct {
+	APIKey string `mapstructure:"api_key"` // Optional: read from ANTHROPIC_API_KEY if empty
+	Model  string `mapstructure:"model"`   // e.g., "claude-3-7-sonnet-20250219"
 }
 
 // LogLevel represents a standard log severity level.
