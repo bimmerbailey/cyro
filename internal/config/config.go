@@ -9,11 +9,12 @@ import (
 
 // Config holds the application-wide configuration.
 type Config struct {
-	Format           string    `mapstructure:"format"`
-	Verbose          bool      `mapstructure:"verbose"`
-	TimestampFormats []string  `mapstructure:"timestamp_formats"`
-	LogDir           string    `mapstructure:"log_dir"`
-	LLM              LLMConfig `mapstructure:"llm"`
+	Format           string          `mapstructure:"format"`
+	Verbose          bool            `mapstructure:"verbose"`
+	TimestampFormats []string        `mapstructure:"timestamp_formats"`
+	LogDir           string          `mapstructure:"log_dir"`
+	LLM              LLMConfig       `mapstructure:"llm"`
+	Redaction        RedactionConfig `mapstructure:"redaction"`
 }
 
 // LLMConfig holds configuration for LLM providers.
@@ -51,7 +52,17 @@ type OpenAIConfig struct {
 // AnthropicConfig holds Anthropic/Claude-specific settings.
 type AnthropicConfig struct {
 	APIKey string `mapstructure:"api_key"` // Optional: read from ANTHROPIC_API_KEY if empty
-	Model  string `mapstructure:"model"`   // e.g., "claude-3-7-sonnet-20250219"
+	Model  string `mapstructure:"model"`   // e.g. "claude-3-7-sonnet-20250219"
+}
+
+// RedactionConfig holds configuration for secret redaction in preprocessing.
+type RedactionConfig struct {
+	// Enabled controls whether redaction is active
+	Enabled bool `mapstructure:"enabled"`
+
+	// Patterns specifies which redaction patterns to use
+	// Available: ipv4, ipv6, email, api_key, aws_key, jwt, private_key, mac_address, credit_card, uuid
+	Patterns []string `mapstructure:"patterns"`
 }
 
 // LogLevel represents a standard log severity level.
