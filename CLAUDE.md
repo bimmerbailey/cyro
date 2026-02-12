@@ -40,6 +40,7 @@ See @README.md for project overview and @docs/DESIGN.md for architecture details
 - **Documentation:** Every package must have a doc comment (`// Package config provides...`)
 - **Internal packages:** All business logic goes in `internal/` (unexportable by convention)
 - **One concern per file:** Each file handles a single responsibility
+- **LLM Provider:** All providers implement the same `llm.Provider` interface. Provider selection via `llm.provider` config value. API keys resolved from native env vars (OPENAI_API_KEY, ANTHROPIC_API_KEY). Fail fast with clear errors if required API keys are missing.
 
 ## Architecture
 
@@ -60,10 +61,28 @@ See @README.md for project overview and @docs/DESIGN.md for architecture details
 
 ## Dependencies
 
-Only two direct dependencies -- keep it minimal:
+Core dependencies:
 
 - `github.com/spf13/cobra` -- CLI framework
 - `github.com/spf13/viper` -- Configuration management
+- `github.com/tmc/langchaingo` -- Multi-provider LLM support (Ollama, OpenAI, Anthropic)
+
+## LLM Provider Testing
+
+To test different providers locally:
+
+```bash
+# Ollama (default - requires ollama running)
+make test
+
+# OpenAI (requires API key)
+export OPENAI_API_KEY=sk-proj-...
+make test
+
+# Anthropic (requires API key)
+export ANTHROPIC_API_KEY=sk-ant-...
+make test
+```
 
 ## Testing Guidelines
 

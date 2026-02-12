@@ -36,7 +36,6 @@ import (
 	"strings"
 
 	"github.com/bimmerbailey/cyro/internal/config"
-	"github.com/bimmerbailey/cyro/internal/llm/ollama"
 )
 
 // Provider defines the interface for LLM interactions.
@@ -145,111 +144,14 @@ func NewProvider(cfg *config.Config, logger *slog.Logger) (Provider, error) {
 
 	switch providerType {
 	case "ollama":
-		ollamaProvider, err := ollama.New(ollama.Config{
-			Host:           cfg.LLM.Ollama.Host,
-			Model:          cfg.LLM.Ollama.Model,
-			EmbeddingModel: cfg.LLM.Ollama.EmbeddingModel,
-		}, logger)
-		if err != nil {
-			return nil, err
-		}
-		return &ollamaProviderAdapter{provider: ollamaProvider}, nil
-
+		return newOllamaProvider(cfg, logger)
+	case "openai":
+		return newOpenAIProvider(cfg, logger)
+	case "anthropic":
+		return newAnthropicProvider(cfg, logger)
 	case "":
 		return nil, errors.New("llm provider not specified in configuration")
-
 	default:
-		return nil, fmt.Errorf("unknown llm provider: %s (supported: ollama)", providerType)
+		return nil, fmt.Errorf("unknown llm provider: %s (supported: ollama, openai, anthropic)", providerType)
 	}
-}
-
-// ollamaProviderAdapter adapts the ollama.Provider to the llm.Provider interface.
-// This is needed to avoid import cycles between llm and ollama packages.
-type ollamaProviderAdapter struct {
-	provider *ollama.Provider
-}
-
-func (a *ollamaProviderAdapter) Chat(ctx context.Context, messages []Message, opts *ChatOptions) (*Response, error) {
-	// Convert llm.Message to ollama.Message
-	ollamaMessages := make([]ollama.Message, len(messages))
-	for i, msg := range messages {
-		ollamaMessages[i] = ollama.Message{
-			Role:    msg.Role,
-			Content: msg.Content,
-		}
-	}
-
-	// Convert options
-	var ollamaOpts *ollama.ChatOptions
-	if opts != nil {
-		ollamaOpts = &ollama.ChatOptions{
-			Model:       opts.Model,
-			Temperature: opts.Temperature,
-			MaxTokens:   opts.MaxTokens,
-		}
-	}
-
-	// Call ollama provider
-	resp, err := a.provider.Chat(ctx, ollamaMessages, ollamaOpts)
-	if err != nil {
-		return nil, err
-	}
-
-	// Convert response
-	return &Response{
-		Content:      resp.Content,
-		Model:        resp.Model,
-		TokensPrompt: resp.TokensPrompt,
-		TokensTotal:  resp.TokensTotal,
-	}, nil
-}
-
-func (a *ollamaProviderAdapter) ChatStream(ctx context.Context, messages []Message, opts *ChatOptions) (<-chan StreamEvent, error) {
-	// Convert llm.Message to ollama.Message
-	ollamaMessages := make([]ollama.Message, len(messages))
-	for i, msg := range messages {
-		ollamaMessages[i] = ollama.Message{
-			Role:    msg.Role,
-			Content: msg.Content,
-		}
-	}
-
-	// Convert options
-	var ollamaOpts *ollama.ChatOptions
-	if opts != nil {
-		ollamaOpts = &ollama.ChatOptions{
-			Model:       opts.Model,
-			Temperature: opts.Temperature,
-			MaxTokens:   opts.MaxTokens,
-		}
-	}
-
-	// Get ollama stream
-	ollamaStream, err := a.provider.ChatStream(ctx, ollamaMessages, ollamaOpts)
-	if err != nil {
-		return nil, err
-	}
-
-	// Convert stream events
-	eventChan := make(chan StreamEvent, 10)
-	go func() {
-		defer close(eventChan)
-		for ollamaEvent := range ollamaStream {
-			eventChan <- StreamEvent{
-				Content: ollamaEvent.Content,
-				Done:    ollamaEvent.Done,
-				Error:   ollamaEvent.Error,
-			}
-		}
-	}()
-
-	return eventChan, nil
-}
-
-func (a *ollamaProviderAdapter) Heartbeat(ctx context.Context) error {
-	return a.provider.Heartbeat(ctx)
-}
-
-func (a *ollamaProviderAdapter) ModelAvailable(ctx context.Context, model string) (bool, error) {
-	return a.provider.ModelAvailable(ctx, model)
 }

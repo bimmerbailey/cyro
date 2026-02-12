@@ -4,56 +4,200 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/bimmerbailey/cyro/internal/config"
-	"github.com/bimmerbailey/cyro/internal/llm/ollama"
 )
 
-// TestOllamaImplementsProvider verifies that ollama.Provider implements the Provider interface.
-func TestOllamaImplementsProvider(t *testing.T) {
+func TestNewProvider_AllProviders(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 
-	ollamaProvider, err := ollama.New(ollama.Config{
-		Host:  "http://localhost:11434",
-		Model: "llama3.2",
-	}, logger)
-	if err != nil {
-		t.Fatalf("Failed to create ollama provider: %v", err)
-	}
-
-	// Wrap in adapter
-	adapter := &ollamaProviderAdapter{provider: ollamaProvider}
-
-	// This will fail at compile time if the interface is not satisfied
-	var _ Provider = adapter
-}
-
-// TestNewProviderOllama verifies the factory creates an Ollama provider.
-func TestNewProviderOllama(t *testing.T) {
-	cfg := &config.Config{
-		LLM: config.LLMConfig{
-			Provider: "ollama",
-			Ollama: config.OllamaConfig{
-				Host:           "http://localhost:11434",
-				Model:          "llama3.2",
-				EmbeddingModel: "nomic-embed-text",
+	tests := []struct {
+		name        string
+		provider    string
+		cfg         config.LLMConfig
+		setupEnv    func(t *testing.T)
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name:     "ollama - valid config",
+			provider: "ollama",
+			cfg: config.LLMConfig{
+				Provider: "ollama",
+				Ollama: config.OllamaConfig{
+					Host:  "http://localhost:11434",
+					Model: "llama3.2",
+				},
 			},
+			setupEnv: func(t *testing.T) {},
+		},
+		{
+			name:     "openai - with env var",
+			provider: "openai",
+			cfg: config.LLMConfig{
+				Provider: "openai",
+				OpenAI: config.OpenAIConfig{
+					Model: "gpt-4",
+				},
+			},
+			setupEnv: func(t *testing.T) {
+				t.Setenv("OPENAI_API_KEY", "sk-test-key")
+			},
+		},
+		{
+			name:     "openai - with config key",
+			provider: "openai",
+			cfg: config.LLMConfig{
+				Provider: "openai",
+				OpenAI: config.OpenAIConfig{
+					APIKey: "sk-from-config",
+					Model:  "gpt-4",
+				},
+			},
+			setupEnv: func(t *testing.T) {},
+		},
+		{
+			name:     "openai - missing api key",
+			provider: "openai",
+			cfg: config.LLMConfig{
+				Provider: "openai",
+				OpenAI: config.OpenAIConfig{
+					Model: "gpt-4",
+				},
+			},
+			setupEnv: func(t *testing.T) {
+				// Explicitly unset the env var to ensure it's not set
+				os.Unsetenv("OPENAI_API_KEY")
+			},
+			expectError: true,
+			errorMsg:    "OPENAI_API_KEY",
+		},
+		{
+			name:     "anthropic - with env var",
+			provider: "anthropic",
+			cfg: config.LLMConfig{
+				Provider: "anthropic",
+				Anthropic: config.AnthropicConfig{
+					Model: "claude-3-7-sonnet-20250219",
+				},
+			},
+			setupEnv: func(t *testing.T) {
+				t.Setenv("ANTHROPIC_API_KEY", "sk-ant-test-key")
+			},
+		},
+		{
+			name:     "anthropic - missing api key",
+			provider: "anthropic",
+			cfg: config.LLMConfig{
+				Provider: "anthropic",
+				Anthropic: config.AnthropicConfig{
+					Model: "claude-3-7-sonnet-20250219",
+				},
+			},
+			setupEnv: func(t *testing.T) {
+				// Explicitly unset the env var to ensure it's not set
+				os.Unsetenv("ANTHROPIC_API_KEY")
+			},
+			expectError: true,
+			errorMsg:    "ANTHROPIC_API_KEY",
+		},
+		{
+			name:     "unknown provider",
+			provider: "gemini",
+			cfg: config.LLMConfig{
+				Provider: "gemini",
+			},
+			setupEnv:    func(t *testing.T) {},
+			expectError: true,
+			errorMsg:    "unknown llm provider",
+		},
+		{
+			name:     "empty provider",
+			provider: "",
+			cfg: config.LLMConfig{
+				Provider: "",
+			},
+			setupEnv:    func(t *testing.T) {},
+			expectError: true,
+			errorMsg:    "not specified",
 		},
 	}
 
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
-	provider, err := NewProvider(cfg, logger)
-	if err != nil {
-		t.Fatalf("NewProvider() failed: %v", err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.setupEnv(t)
+
+			cfg := &config.Config{LLM: tt.cfg}
+
+			provider, err := NewProvider(cfg, logger)
+
+			if tt.expectError {
+				if err == nil {
+					t.Fatal("expected error but got none")
+				}
+				if tt.errorMsg != "" && !strings.Contains(err.Error(), tt.errorMsg) {
+					t.Errorf("error should contain %q, got: %v", tt.errorMsg, err)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if provider == nil {
+				t.Fatal("expected provider but got nil")
+			}
+		})
+	}
+}
+
+func TestResolveAPIKey(t *testing.T) {
+	tests := []struct {
+		name       string
+		configKey  string
+		envVarName string
+		envVarVal  string
+		expected   string
+	}{
+		{
+			name:       "config key takes precedence",
+			configKey:  "from-config",
+			envVarName: "TEST_KEY",
+			envVarVal:  "from-env",
+			expected:   "from-config",
+		},
+		{
+			name:       "fallback to env var",
+			configKey:  "",
+			envVarName: "TEST_KEY",
+			envVarVal:  "from-env",
+			expected:   "from-env",
+		},
+		{
+			name:       "empty when neither set",
+			configKey:  "",
+			envVarName: "TEST_KEY",
+			envVarVal:  "",
+			expected:   "",
+		},
 	}
 
-	if provider == nil {
-		t.Fatal("NewProvider() returned nil provider")
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.envVarVal != "" {
+				t.Setenv(tt.envVarName, tt.envVarVal)
+			}
 
-	// Verify provider has all required methods (compile-time check)
-	var _ Provider = provider
+			result := resolveAPIKey(tt.configKey, tt.envVarName)
+
+			if result != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, result)
+			}
+		})
+	}
 }
 
 // TestNewProviderNilConfig verifies that nil config is rejected.
@@ -80,36 +224,6 @@ func TestNewProviderNilLogger(t *testing.T) {
 	_, err := NewProvider(cfg, nil)
 	if err == nil {
 		t.Error("NewProvider() should reject nil logger")
-	}
-}
-
-// TestNewProviderUnknown verifies that unknown provider is rejected.
-func TestNewProviderUnknown(t *testing.T) {
-	cfg := &config.Config{
-		LLM: config.LLMConfig{
-			Provider: "unknown-provider",
-		},
-	}
-
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
-	_, err := NewProvider(cfg, logger)
-	if err == nil {
-		t.Error("NewProvider() should reject unknown provider")
-	}
-}
-
-// TestNewProviderEmptyProvider verifies that empty provider string is rejected.
-func TestNewProviderEmptyProvider(t *testing.T) {
-	cfg := &config.Config{
-		LLM: config.LLMConfig{
-			Provider: "",
-		},
-	}
-
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
-	_, err := NewProvider(cfg, logger)
-	if err == nil {
-		t.Error("NewProvider() should reject empty provider")
 	}
 }
 
@@ -216,9 +330,6 @@ func TestErrorTypes(t *testing.T) {
 
 // TestProviderInterfaceMethods verifies all Provider interface methods are callable.
 func TestProviderInterfaceMethods(t *testing.T) {
-	// This test verifies that all methods exist at compile time
-	// Runtime behavior is tested in ollama_test.go
-
 	cfg := &config.Config{
 		LLM: config.LLMConfig{
 			Provider: "ollama",

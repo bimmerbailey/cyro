@@ -1,85 +1,53 @@
 # Cyro Design Document
 
-## LLM Integration Strategy
+## LLM Integration: LangChainGo
 
-There are three viable approaches for integrating LLMs into Cyro's Go CLI:
+Cyro uses [langchaingo](https://github.com/tmc/langchaingo) (8.6K stars, MIT license) for unified multi-provider LLM support. This provides a single interface across Ollama, OpenAI, Anthropic, and future providers.
 
-### Option A: Direct Provider SDKs
+### Architecture
 
-Use each provider's official Go SDK behind a common `Provider` interface in `internal/llm/`.
+```
+internal/llm/
+├── llm.go          # Provider interface & factory
+├── adapter.go      # LangChainGo adapter implementation
+├── providers.go    # Provider-specific constructors
+└── doc.go          # Package documentation
+```
 
-| Provider  | SDK                                      | Stars | Status              |
-|-----------|------------------------------------------|-------|---------------------|
-| Ollama    | `github.com/ollama/ollama/api`           | 162K  | Official, Go-native |
-| OpenAI    | `github.com/openai/openai-go/v3`         | 2.9K  | Official, v3.18.0   |
-| Anthropic | `github.com/anthropics/anthropic-sdk-go` | 767   | Official, v1.21.0   |
-| Gemini    | `google.golang.org/genai`                | 1K    | Official, v1.45.0   |
-
-Define a shared interface and implement per-SDK:
+The `Provider` interface remains stable across all providers:
 
 ```go
 type Provider interface {
-Chat(ctx context.Context, messages []Message, opts ChatOptions) (*Response, error)
-ChatStream(ctx context.Context, messages []Message, opts ChatOptions) (<-chan StreamEvent, error)
+    Chat(ctx, messages, opts) (*Response, error)
+    ChatStream(ctx, messages, opts) (<-chan StreamEvent, error)
+    Heartbeat(ctx) error
+    ModelAvailable(ctx, model) (bool, error)
 }
 ```
 
-**Pros:** Full control, type-safe, only import what you use, each SDK is production-grade and officially maintained.
+### Supported Providers
 
-**Cons:** More boilerplate — you maintain the abstraction layer yourself.
+| Provider  | Type   | API Key Required | Key Source                   |
+|-----------|--------|------------------|------------------------------|
+| Ollama    | Local  | No               | N/A                          |
+| OpenAI    | Cloud  | Yes              | `OPENAI_API_KEY`             |
+| Anthropic | Cloud  | Yes              | `ANTHROPIC_API_KEY`          |
 
-### Option B: LangChainGo
+### API Key Resolution
 
-Use `github.com/tmc/langchaingo` (8.6K stars, 187 contributors, MIT) for a unified `llms.Model` interface across all
-providers, plus chains, agents, memory, tool calling, and RAG primitives.
+API keys are resolved in priority order:
+1. Config file (`llm.openai.api_key` or `llm.anthropic.api_key`)
+2. Native environment variable (`OPENAI_API_KEY` or `ANTHROPIC_API_KEY`)
 
-```go
-llm, _ := ollama.New(ollama.WithModel("llama3.2"))
-// swap to: openai.New() or anthropic.New() — same interface
-completion, _ := llms.GenerateFromSinglePrompt(ctx, llm, "analyze this log")
-```
+If a provider requires an API key and neither source provides one, initialization fails with a clear error message.
 
-**Pros:** Instant multi-provider support, streaming built in, idiomatic Go, rich abstractions for agents/tool-calling.
+### Benefits
 
-**Cons:** Pre-v1 (v0.1.14), heavy dependency tree, abstracts away provider-specific features.
-
-### Option C: OpenAI SDK as Universal Client
-
-Since Ollama and many other providers expose OpenAI-compatible endpoints, use a single SDK for everything:
-
-```go
-// Ollama via OpenAI-compatible endpoint
-client := openai.NewClient(option.WithBaseURL("http://localhost:11434/v1"))
-// OpenAI directly
-client := openai.NewClient() // uses OPENAI_API_KEY
-```
-
-This is how [charmbracelet/mods](https://github.com/charmbracelet/mods) (4.4K stars) works — one SDK, config-driven base
-URLs.
-
-**Pros:** Simplest code, single dependency.
-
-**Cons:** Loses Ollama-specific features (model pulling, thinking mode) and Anthropic-specific features (extended
-thinking, Bedrock).
-
-### Assessment
-
-Given Cyro's goals (Ollama-first, multi-provider flexibility, subagent system):
-
-- **Option A** is the most robust long-term choice — full access to each provider's capabilities, clean architecture, no
-  framework lock-in. More upfront work but pays off as complexity grows.
-- **Option B** is the fastest path if you want chains/agents/RAG built in and don't mind the dependency weight.
-- **Option C** is pragmatic for shipping fast when provider-specific features aren't needed.
-
-A hybrid of A and C is also viable — use the Ollama native client for full Ollama features (model management, thinking
-mode), and the OpenAI SDK for OpenAI/other compatible providers.
-
-### Open Questions
-
-1. Which providers are needed immediately? Just Ollama, or OpenAI/Anthropic from the start?
-2. Are agent/tool-calling capabilities needed (LLM deciding to run shell commands, query files), or is this more about
-   sending log data to an LLM for analysis?
-3. How important is keeping dependencies minimal?
+- **Unified Interface:** Switch providers without code changes
+- **Native Support:** Uses each provider's official SDK under the hood
+- **Error Handling:** Structured error types for rate limits, auth failures, etc.
+- **Future-Proof:** Easy to add Gemini, Cohere, or other providers
+- **Active Ecosystem:** 187 contributors, regular updates
 
 ---
 

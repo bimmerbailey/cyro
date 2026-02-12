@@ -1,34 +1,60 @@
-// Package llm provides a unified interface for interacting with Large Language Models.
+// Package llm provides a unified interface for interacting with multiple LLM providers.
 //
-// # Overview
-//
-// This package defines a Provider interface that abstracts different LLM providers
-// (Ollama, OpenAI, Anthropic) behind a common API. This allows the rest of the
-// application to use LLMs without being coupled to a specific provider.
+// Cyro uses langchaingo (github.com/tmc/langchaingo) to support Ollama, OpenAI,
+// and Anthropic through a single Provider interface. The package handles provider
+// selection, API key resolution, and error normalization.
 //
 // # Architecture
 //
-// The package uses a factory pattern with provider-specific implementations in
-// subpackages. To avoid import cycles, subpackages (like ollama) define their own
-// types that match the Provider interface, and the parent package uses adapter
-// types to bridge between them.
+//	┌──────────┐
+//	│ Provider │  Interface
+//	│Interface │  (Chat, ChatStream, Heartbeat, ModelAvailable)
+//	└────┬─────┘
+//	     │
+//	     ├──────────────┬──────────────┬───────────────┐
+//	     │              │              │               │
+//	┌────▼────┐   ┌─────▼─────┐  ┌────▼──────┐  ┌─────▼──────┐
+//	│ Ollama  │   │  OpenAI   │  │ Anthropic │  │  (future)  │
+//	│Provider │   │ Provider  │  │ Provider  │  │            │
+//	└────┬────┘   └─────┬─────┘  └────┬──────┘  └────────────┘
+//	     │              │              │
+//	     └──────────────┴──────────────┘
+//	                    │
+//	           ┌────────▼─────────┐
+//	           │  langchaingo     │
+//	           │  llms.Model      │
+//	           └──────────────────┘
 //
-//	┌──────────────┐
-//	│ llm package  │  ← Defines Provider interface
-//	│              │  ← Factory: NewProvider()
-//	│              │  ← Adapters for each provider
-//	└──────┬───────┘
-//	       │
-//	       ├─────────────┐
-//	       │             │
-//	┌──────▼──────┐  ┌──▼───────────┐
-//	│ llm/ollama  │  │ llm/openai   │ (future)
-//	│ package     │  │ package      │
-//	└─────────────┘  └──────────────┘
+// # Configuration
 //
-// # Usage
+// Provider selection is controlled by the llm.provider config value:
 //
-// Create a provider using the factory function with your configuration:
+//	llm:
+//	  provider: ollama  # or "openai", "anthropic"
+//	  temperature: 0.0
+//
+//	  ollama:
+//	    host: http://localhost:11434
+//	    model: llama3.2
+//
+//	  openai:
+//	    model: gpt-4o
+//	    # api_key: read from OPENAI_API_KEY env var
+//
+//	  anthropic:
+//	    model: claude-3-7-sonnet-20250219
+//	    # api_key: read from ANTHROPIC_API_KEY env var
+//
+// # API Key Resolution
+//
+// API keys are resolved in this order:
+//  1. Config file (llm.openai.api_key or llm.anthropic.api_key)
+//  2. Native environment variable (OPENAI_API_KEY or ANTHROPIC_API_KEY)
+//
+// If a provider requires an API key and neither source provides one, NewProvider
+// returns an error.
+//
+// # Example Usage
 //
 //	import (
 //	    "log/slog"
@@ -124,57 +150,18 @@
 //	    // Handle connection failure
 //	}
 //
-// # Configuration
+// # Switching Providers
 //
-// Configuration is loaded from ~/.cyro.yaml or environment variables:
+// Switch between providers using environment variables:
 //
-//	llm:
-//	  provider: ollama
-//	  temperature: 0
-//	  token_budget: 8000
-//	  ollama:
-//	    host: http://localhost:11434
-//	    model: llama3.2
-//	    embedding_model: nomic-embed-text
+//	# Use Ollama (default)
+//	cyro chat /var/log/app.log
 //
-// Environment variables (prefix: CYRO_):
+//	# Use OpenAI
+//	CYRO_LLM_PROVIDER=openai OPENAI_API_KEY=sk-... cyro chat /var/log/app.log
 //
-//   - CYRO_PROVIDER=ollama
-//   - CYRO_OLLAMA_HOST=http://localhost:11434
-//   - CYRO_OLLAMA_MODEL=llama3.2
-//
-// # Adding New Providers
-//
-// To add support for a new LLM provider:
-//
-// 1. Create a new subpackage (e.g., internal/llm/openai)
-//
-// 2. Define types matching the Provider interface:
-//
-//	type Provider struct { ... }
-//	type Message struct { Role, Content string }
-//	type ChatOptions struct { Model, Temperature, MaxTokens }
-//	type Response struct { Content, Model, TokensPrompt, TokensTotal }
-//	type StreamEvent struct { Content, Done, Error }
-//
-// 3. Implement all Provider methods:
-//
-//	func (p *Provider) Chat(ctx, messages, opts) (*Response, error)
-//	func (p *Provider) ChatStream(ctx, messages, opts) (<-chan StreamEvent, error)
-//	func (p *Provider) Heartbeat(ctx) error
-//	func (p *Provider) ModelAvailable(ctx, model) (bool, error)
-//
-// 4. Add a case to the NewProvider() factory in llm.go:
-//
-//	case "openai":
-//	    openaiProvider, err := openai.New(...)
-//	    return &openaiProviderAdapter{provider: openaiProvider}, nil
-//
-// 5. Create an adapter type that converts between llm types and provider types
-//
-// 6. Add configuration structs to internal/config/config.go
-//
-// 7. Add default values to cmd/root.go
+//	# Use Anthropic
+//	CYRO_LLM_PROVIDER=anthropic ANTHROPIC_API_KEY=sk-ant-... cyro chat /var/log/app.log
 //
 // # Thread Safety
 //
