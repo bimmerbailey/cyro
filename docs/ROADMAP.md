@@ -122,11 +122,9 @@ At this point Cyro is a useful `grep`/`jq`-like tool for logs — no AI required
 
 ### 2.4 Ask Command (`cmd/ask.go` — new)
 
-- [ ] Natural language questions about log files: `cyro ask "what caused the errors?" --file app.log`
-- [ ] Direct prompting mode (pre-compress logs, send with question)
-- [ ] Streaming response output
-- [ ] Follow-up questions with conversation context
-  - Ensure that memory is saved for the conversation
+- [x] Natural language questions about log files: `cyro ask "what caused the errors?" --file app.log`
+- [x] Direct prompting mode (pre-compress logs, send with question)
+- [x] Streaming response output
 
 ### 2.5 Prompt Templates (`internal/prompt/`)
 
