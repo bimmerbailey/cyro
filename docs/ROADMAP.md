@@ -93,25 +93,29 @@ At this point Cyro is a useful `grep`/`jq`-like tool for logs — no AI required
 
 ### 2.2 Pre-Processing Pipeline (`internal/preprocess/`)
 
-- [ ] Drain algorithm implementation in pure Go (log template extraction)
-    - Fixed-depth parse tree
-    - Wildcard token replacement for variable fields
-    - Template frequency counting
-- [ ] Secret redaction with correlation-preserving hashes
+- [x] Drain algorithm implementation in pure Go (log template extraction)
+    - Fixed-depth parse tree (default depth 4)
+    - Wildcard token replacement for variable fields (numbers, IPs, UUIDs, timestamps)
+    - Template frequency counting with similarity-based merging
+- [x] Secret redaction with correlation-preserving hashes
     - IP addresses → `[IPV4:a3f2]`
     - Email addresses → `[EMAIL:b7c1]`
     - API keys / tokens (common patterns) → `[SECRET:d4e5]`
     - Same entity always maps to same placeholder
-- [ ] Token budget enforcement (default 8K tokens, configurable)
-- [ ] Log compression: templates + frequency counts + time range summary
+- [x] Token budget enforcement (default 8K tokens, configurable)
+    - Priority-based inclusion: errors > warnings > info
+    - Automatic truncation when budget exceeded
+- [x] Log compression: templates + frequency counts + time range summary
+    - ~50x compression ratio for typical logs
+    - Preserves error context and patterns
 
 ### 2.3 AI-Powered Analyze (`cmd/analyze.go` enhancement)
 
 - [ ] `--ai` flag to enable LLM-powered analysis
-- [ ] Pipeline: parse → pre-process (Drain + redaction) → compress → LLM summarization
 - [ ] System prompt for log analysis (temperature 0, structured output)
-- [ ] Hierarchical map-reduce for files exceeding context window
 - [ ] Streaming LLM response to terminal
+- [ ] Instead of loading full files, use tools to search through files
+  - Files could exceed context window
 
 ### 2.4 Ask Command (`cmd/ask.go` — new)
 
@@ -119,6 +123,7 @@ At this point Cyro is a useful `grep`/`jq`-like tool for logs — no AI required
 - [ ] Direct prompting mode (pre-compress logs, send with question)
 - [ ] Streaming response output
 - [ ] Follow-up questions with conversation context
+  - Ensure that memory is saved for the conversation
 
 ### 2.5 Prompt Templates (`internal/prompt/`)
 
