@@ -111,11 +111,14 @@ At this point Cyro is a useful `grep`/`jq`-like tool for logs — no AI required
 
 ### 2.3 AI-Powered Analyze (`cmd/analyze.go` enhancement)
 
-- [ ] `--ai` flag to enable LLM-powered analysis
-- [ ] System prompt for log analysis (temperature 0, structured output)
-- [ ] Streaming LLM response to terminal
-- [ ] Instead of loading full files, use tools to search through files
-  - Files could exceed context window
+- [x] `--ai` flag to enable LLM-powered analysis
+- [x] System prompt for log analysis (temperature 0, structured output)
+- [x] Streaming LLM response to terminal
+- [x] Preprocessing pipeline integration (Drain + redaction + token budget)
+  - Handles large files via compression (~50x ratio) before sending to LLM
+- [x] JSON and text output formats with verbose statistics
+- [x] Multi-provider support (Ollama, OpenAI, Anthropic)
+- [x] Pattern and filter support applied before AI analysis
 
 ### 2.4 Ask Command (`cmd/ask.go` — new)
 
