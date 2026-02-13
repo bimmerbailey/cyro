@@ -94,6 +94,12 @@ func initConfig() {
 	// Anthropic defaults (api_key from ANTHROPIC_API_KEY env var)
 	viper.SetDefault("llm.anthropic.model", "claude-3-7-sonnet-20250219")
 
+	// Redaction defaults
+	viper.SetDefault("redaction.enabled", true)
+	viper.SetDefault("redaction.patterns", []string{
+		"ipv4", "ipv6", "email", "api_key", "jwt",
+	})
+
 	if err := viper.ReadInConfig(); err == nil {
 		if viper.GetBool("verbose") {
 			fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
