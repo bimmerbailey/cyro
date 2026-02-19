@@ -128,12 +128,12 @@ At this point Cyro is a useful `grep`/`jq`-like tool for logs — no AI required
 
 ### 2.5 Prompt Templates (`internal/prompt/`)
 
-- [ ] System prompt: log analyst persona
-- [ ] Summarization prompt template
-- [ ] Root cause analysis prompt template
-- [ ] Anomaly detection prompt template
-- [ ] Natural language query prompt template
-- [ ] Structured output prompt (two-pass pattern for small models)
+- [x] System prompt: log analyst persona
+- [x] Summarization prompt template
+- [x] Root cause analysis prompt template
+- [x] Anomaly detection prompt template
+- [x] Natural language query prompt template
+- [x] Structured output prompt (two-pass pattern for small models)
 
 ### 2.6 Configuration
 

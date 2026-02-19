@@ -34,3 +34,5 @@ go.work.sum
 bin/
 .claude/
 *.local*
+.cyro/
+.cyro.yml

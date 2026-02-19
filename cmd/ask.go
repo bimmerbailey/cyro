@@ -14,6 +14,7 @@ import (
 	"github.com/bimmerbailey/cyro/internal/output"
 	"github.com/bimmerbailey/cyro/internal/parser"
 	"github.com/bimmerbailey/cyro/internal/preprocess"
+	"github.com/bimmerbailey/cyro/internal/prompt"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -184,9 +185,15 @@ func runAsk(cmd *cobra.Command, args []string) error {
 	}
 
 	// Build prompts
-	messages := []llm.Message{
-		{Role: "system", Content: buildAskSystemPrompt()},
-		{Role: "user", Content: buildAskUserPrompt(question, preprocessOutput)},
+	messages, err := prompt.Build(prompt.TypeNaturalLanguageQuery, prompt.BuildOptions{
+		Summary:  preprocessOutput.Summary,
+		Question: question,
+		Files:    expandedFiles,
+		Pattern:  pattern,
+		Level:    levelStr,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to build prompt: %w", err)
 	}
 
 	chatOpts := &llm.ChatOptions{

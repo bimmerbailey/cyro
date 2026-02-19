@@ -15,6 +15,7 @@ import (
 	"github.com/bimmerbailey/cyro/internal/output"
 	"github.com/bimmerbailey/cyro/internal/parser"
 	"github.com/bimmerbailey/cyro/internal/preprocess"
+	"github.com/bimmerbailey/cyro/internal/prompt"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -327,14 +328,15 @@ func runAIAnalyze(
 	}
 
 	// 4. Build prompts
-	messages := []llm.Message{
-		{Role: "system", Content: buildAnalysisSystemPrompt()},
-		{Role: "user", Content: buildAnalysisUserPrompt(preprocessOutput, AnalysisContext{
-			Pattern: pattern,
-			GroupBy: groupBy,
-			Window:  windowStr,
-			Files:   files,
-		})},
+	messages, err := prompt.Build(prompt.TypeSummarize, prompt.BuildOptions{
+		Summary: preprocessOutput.Summary,
+		Pattern: pattern,
+		GroupBy: groupBy,
+		Window:  windowStr,
+		Files:   files,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to build prompt: %w", err)
 	}
 
 	chatOpts := &llm.ChatOptions{
